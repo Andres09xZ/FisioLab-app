@@ -1,0 +1,311 @@
+# ============================================
+# GITIGNORE PRINCIPAL - FISIOLAB
+# ============================================
+# Protección de archivos sensibles y confidenciales
+# Autor: Andres Rodriguez @ MagicCorp
+# ============================================
+
+# ============================================
+# ARCHIVOS SENSIBLES Y CREDENCIALES (CRÍTICO)
+# ============================================
+
+# Variables de entorno - NUNCA subir estas
+**/.env
+**/.env.local
+**/.env.development
+**/.env.test
+**/.env.production
+**/.env.staging
+**/.env.*.local
+**/.env.backup
+.env
+.env.*
+
+# Claves privadas y certificados
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+**/*-key.pem
+**/*-cert.pem
+secrets/
+keys/
+certificates/
+ssl/
+
+# Archivos de configuración con credenciales
+**/config.local.*
+**/config.production.*
+**/credentials.json
+**/auth.json
+**/secrets.json
+
+# ============================================
+# DATOS DE PACIENTES Y ARCHIVOS MÉDICOS
+# ============================================
+
+# Uploads - Documentos médicos (datos sensibles HIPAA/GDPR)
+**/uploads/*
+!**/uploads/.gitkeep
+backend/api/uploads/**/*
+temp/
+tmp/
+storage/
+user-files/
+
+# Backups de bases de datos (pueden contener info de pacientes)
+*.sql
+*.dump
+*.bak
+**/backups/
+**/db-backup/
+**/dumps/
+
+# ============================================
+# DEPENDENCIAS
+# ============================================
+
+# Node.js
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+
+# Lock files (opcional, descomenta si quieres versionarlos)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ============================================
+# NEXT.JS (FRONTEND)
+# ============================================
+
+# Build outputs
+**/.next/
+**/out/
+**/.next/**/*
+
+# Next.js cache
+**/.next/cache/
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# ============================================
+# BASES DE DATOS
+# ============================================
+
+# Archivos de bases de datos locales
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Datos de Docker/PostgreSQL
+**/postgres-data/
+**/pgdata/
+**/data/
+**/volumes/
+
+# ============================================
+# LOGS Y DEBUGGING
+# ============================================
+
+logs/
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+debug.log
+error.log
+access.log
+combined.log
+**/logs/**/*
+
+# ============================================
+# DOCKER
+# ============================================
+
+docker-compose.override.yml
+*.override.yml
+.dockerignore
+
+# ============================================
+# SISTEMA OPERATIVO
+# ============================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# IDEs Y EDITORES
+# ============================================
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+*.code-workspace
+.history/
+
+# JetBrains (WebStorm, IntelliJ, PHPStorm, etc)
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+.emacs.desktop
+.emacs.desktop.lock
+
+# ============================================
+# TESTING Y COVERAGE
+# ============================================
+
+coverage/
+*.coverage
+.nyc_output/
+.coverage/
+htmlcov/
+test-results/
+junit.xml
+.pytest_cache/
+__pycache__/
+
+# ============================================
+# BUILD Y CACHE
+# ============================================
+
+dist/
+build/
+.cache/
+.temp/
+.tmp/
+*.tsbuildinfo
+
+# ============================================
+# TOKENS Y SESIONES
+# ============================================
+
+# Archivos de sesión
+sessions/
+*.session
+
+# Tokens (por patrón en nombre de archivo)
+*token*.json
+*apikey*.json
+*api-key*.json
+*jwt*.json
+
+# ============================================
+# DATOS DE PRUEBA SENSIBLES
+# ============================================
+
+# Datos de prueba que podrían contener info real
+test-data/
+sample-data/
+mock-data/
+fixtures/sensitive/
+
+# ============================================
+# OTROS ARCHIVOS TEMPORALES Y CACHE
+# ============================================
+
+*.tmp
+*.temp
+*.cache
+.cache/
+*.pid
+*.seed
+*.pid.lock
+
+# ============================================
+# ARCHIVOS DE RESPALDO
+# ============================================
+
+*.backup
+*.old
+*.orig
+*.bak
+*-backup.*
+*-old.*
+
+# ============================================
+# NOTAS Y DOCUMENTOS PRIVADOS
+# ============================================
+
+# Notas personales que no deben subirse
+NOTES.md
+TODO-private.md
+PRIVATE.md
+.private/
+private/
+
+# ============================================
+# CONFIGURACIONES LOCALES ESPECÍFICAS
+# ============================================
+
+# Archivos de configuración local del desarrollador
+.local/
+local/
+*.local.*

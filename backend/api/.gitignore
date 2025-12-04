@@ -1,0 +1,199 @@
+# ============================================
+# ARCHIVOS SENSIBLES Y CREDENCIALES
+# ============================================
+
+# Variables de entorno (CRÍTICO - Contiene credenciales)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+.env.backup
+*.env
+
+# Claves y certificados
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+secrets/
+keys/
+certificates/
+
+# Configuraciones con credenciales
+config.local.js
+config.production.js
+credentials.json
+auth.json
+
+# ============================================
+# ARCHIVOS SUBIDOS POR USUARIOS
+# ============================================
+
+# Uploads (documentos médicos, archivos de pacientes)
+uploads/*
+!uploads/.gitkeep
+uploads/**/*
+temp/
+tmp/
+storage/
+
+# ============================================
+# DEPENDENCIAS
+# ============================================
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ============================================
+# LOGS Y DEBUGGING
+# ============================================
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+debug.log
+error.log
+access.log
+combined.log
+
+# ============================================
+# BASES DE DATOS
+# ============================================
+
+# Archivos SQLite
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Dumps y backups de base de datos
+*.sql
+*.dump
+*.bak
+backups/
+db-backup/
+
+# ============================================
+# SISTEMA OPERATIVO
+# ============================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# IDEs Y EDITORES
+# ============================================
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (WebStorm, IntelliJ, etc)
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw[a-z]
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================
+# TESTING Y COVERAGE
+# ============================================
+
+coverage/
+*.coverage
+.nyc_output/
+.coverage/
+htmlcov/
+test-results/
+junit.xml
+
+# ============================================
+# BUILD Y CACHE
+# ============================================
+
+dist/
+build/
+.cache/
+.temp/
+.tmp/
+
+# ============================================
+# OTROS ARCHIVOS SENSIBLES
+# ============================================
+
+# Archivos de sesión
+sessions/
+*.session
+
+# Tokens y API keys (por si acaso)
+*token*
+*apikey*
+*api-key*
+*secret*
+
+# Datos personales o sensibles de prueba
+test-data/
+sample-data/
+mock-data/
+
+# Archivos temporales
+*.tmp
+*.temp
+*.cache

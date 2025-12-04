@@ -1,0 +1,63 @@
+# ============================================
+# VARIABLES DE ENTORNO Y CREDENCIALES
+# ============================================
+
+# Variables de entorno (contiene credenciales de BD)
+.env
+.env.local
+.env.production
+.env.development
+.env.backup
+*.env
+
+# ============================================
+# DATOS DE BASE DE DATOS
+# ============================================
+
+# Backups y dumps
+*.sql
+*.dump
+*.bak
+backups/
+db-backup/
+dumps/
+
+# Volúmenes de Docker (datos persistentes)
+postgres-data/
+pgdata/
+data/
+volumes/
+
+# Archivos de base de datos locales
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================
+# DOCKER
+# ============================================
+
+# Logs de contenedores
+docker-compose.override.yml
+*.override.yml
+
+# ============================================
+# LOGS
+# ============================================
+
+*.log
+logs/
+postgres-logs/
+
+# ============================================
+# SISTEMA OPERATIVO
+# ============================================
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Linux
+*~
