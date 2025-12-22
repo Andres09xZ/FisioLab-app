@@ -14,9 +14,23 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middlewares
-// CORS: permitir solicitudes desde http://localhost:3000 (frontend)
+// CORS: permitir solicitudes desde el frontend
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3002'
+];
+
 const corsOptions = {
-  origin: 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (como mobile apps o curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']

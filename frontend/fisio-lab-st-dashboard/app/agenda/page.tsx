@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardTopbar } from "@/components/dashboard/topbar"
@@ -10,6 +10,18 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar, Plus, Filter, Clock, User, MapPin } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { fetchCalendario, CalendarioEvent, checkDisponibilidad, moverCita } from "@/lib/api/citas"
+import { CitaModal } from "@/components/agenda/CitaModal"
+import { EventPopup } from "@/components/agenda/EventPopup"
+import { useToast } from "@/hooks/use-toast"
+
+// FullCalendar imports
+import FullCalendar from '@fullcalendar/react'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import type { EventClickArg, EventDropArg, DateSelectArg } from '@fullcalendar/core'
+import esLocale from '@fullcalendar/core/locales/es'
 
 interface Cita {
   id: string
@@ -27,10 +39,13 @@ interface Cita {
 
 export default function AgendaPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [user, setUser] = useState<any>(null)
-  const [citas, setCitas] = useState<Cita[]>([])
+  const [citas, setCitas] = useState<CalendarioEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [showCitaModal, setShowCitaModal] = useState(false)
+  const [selectedEvento, setSelectedEvento] = useState<CalendarioEvent | null>(null)
 
   useEffect(() => {
     const userData = localStorage.getItem("fisiolab_user")
@@ -43,34 +58,131 @@ export default function AgendaPage() {
   }, [router])
 
   const fetchCitas = async () => {
-    try {
-      const response = await fetch("http://localhost:3001/api/citas/calendario")
-      const data = await response.json()
-      
-      if (data.success) {
-        setCitas(data.data || [])
-      }
-    } catch (error) {
-      console.error("Error al cargar citas:", error)
-    } finally {
-      setLoading(false)
+    setLoading(true)
+    
+    // Cargar citas para el mes actual (desde hoy - 30 días hasta hoy + 30 días)
+    const desde = format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    const hasta = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    
+    const result = await fetchCalendario(desde, hasta)
+    
+    if (result.success) {
+      setCitas(result.data || [])
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "No se pudieron cargar las citas",
+        variant: "destructive"
+      })
     }
+    
+    setLoading(false)
+  }
+
+  // Manejar click en un evento
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const evento = citas.find(c => c.id === clickInfo.event.id)
+    if (evento) {
+      setSelectedEvento(evento)
+    }
+  }
+
+  // Manejar drag & drop de eventos
+  const handleEventDrop = async (dropInfo: EventDropArg) => {
+    const { event } = dropInfo
+    const nuevoInicio = event.start
+    const nuevoFin = event.end
+
+    if (!nuevoInicio || !nuevoFin) {
+      dropInfo.revert()
+      return
+    }
+
+    // Verificar disponibilidad
+    const disponibilidad = await checkDisponibilidad(
+      event.extendedProps.profesional_id || "1",
+      nuevoInicio.toISOString(),
+      nuevoFin.toISOString(),
+      event.id
+    )
+
+    if (!disponibilidad.success || !disponibilidad.disponible) {
+      toast({
+        title: "Conflicto de horario",
+        description: disponibilidad.conflictos && disponibilidad.conflictos.length > 0
+          ? `Hay ${disponibilidad.conflictos.length} conflicto(s) en ese horario`
+          : "El horario no está disponible",
+        variant: "destructive"
+      })
+      dropInfo.revert()
+      return
+    }
+
+    // Mover la cita
+    const result = await moverCita(
+      event.id,
+      nuevoInicio.toISOString(),
+      nuevoFin.toISOString()
+    )
+
+    if (!result.success) {
+      toast({
+        title: "Error",
+        description: result.error || "No se pudo mover la cita",
+        variant: "destructive"
+      })
+      dropInfo.revert()
+    } else {
+      toast({
+        title: "Cita actualizada",
+        description: "La cita se movió exitosamente"
+      })
+      fetchCitas() // Recargar para sincronizar
+    }
+  }
+
+  // Manejar selección de fecha (para crear nueva cita)
+  const handleDateSelect = (selectInfo: DateSelectArg) => {
+    setShowCitaModal(true)
+    // Aquí podrías prellenar el modal con la fecha seleccionada
   }
 
   const getEstadoColor = (estado: string) => {
     switch (estado.toLowerCase()) {
       case "confirmada":
-        return "bg-emerald-100 text-emerald-700"
+        return "bg-[#E6FFF5] text-[#0AA640]"
       case "pendiente":
         return "bg-yellow-100 text-yellow-700"
       case "cancelada":
         return "bg-red-100 text-red-700"
       case "completada":
-        return "bg-blue-100 text-blue-700"
+        return "bg-[#EBF5FF] text-[#056CF2]"
       default:
         return "bg-gray-100 text-gray-700"
     }
   }
+
+  const getEventColor = (estado: string) => {
+    switch (estado.toLowerCase()) {
+      case "confirmada":
+        return "#0AA640"
+      case "pendiente":
+        return "#EAB308"
+      case "cancelada":
+        return "#EF4444"
+      case "completada":
+        return "#056CF2"
+      default:
+        return "#6B7280"
+    }
+  }
+
+  const citasDeHoy = citas.filter(c => {
+    if (!c.start) return false
+    const citaDate = new Date(c.start)
+    if (isNaN(citaDate.getTime())) return false
+    return format(citaDate, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
+  })
 
   if (!user) return null
 
@@ -95,114 +207,127 @@ export default function AgendaPage() {
                 <Filter className="h-4 w-4 mr-2" />
                 Filtrar
               </Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
+              <Button 
+                className="bg-[#056CF2] hover:bg-[#0558C9]"
+                onClick={() => setShowCitaModal(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Nueva Cita
               </Button>
             </div>
           </div>
 
-          {/* Vista de Calendario */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Calendario lateral */}
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-emerald-600" />
-                  Calendario
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-gray-900">
-                    {format(selectedDate, "d", { locale: es })}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {format(selectedDate, "MMMM yyyy", { locale: es })}
-                  </p>
+          {/* Vista de Calendario con FullCalendar */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-[#056CF2]" />
+                Calendario Interactivo
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#056CF2]"></div>
                 </div>
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Total de citas hoy:</span>
-                    <span className="font-semibold">{citas.length}</span>
-                  </div>
+              ) : (
+                <div className="fullcalendar-wrapper">
+                  <FullCalendar
+                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                    initialView="timeGridWeek"
+                    locale={esLocale}
+                    headerToolbar={{
+                      left: 'prev,next today',
+                      center: 'title',
+                      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    }}
+                    slotMinTime="07:00:00"
+                    slotMaxTime="20:00:00"
+                    allDaySlot={false}
+                    editable={true}
+                    droppable={true}
+                    selectable={true}
+                    selectMirror={true}
+                    dayMaxEvents={true}
+                    weekends={true}
+                    events={citas
+                      .filter(cita => {
+                        // Filtrar citas con fechas inválidas
+                        if (!cita.start || !cita.end) return false
+                        const startDate = new Date(cita.start)
+                        const endDate = new Date(cita.end)
+                        return !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())
+                      })
+                      .map(cita => ({
+                        id: cita.id,
+                        title: cita.title || 'Cita programada',
+                        start: cita.start,
+                        end: cita.end,
+                        backgroundColor: getEventColor(cita.estado),
+                        borderColor: getEventColor(cita.estado),
+                        extendedProps: {
+                          estado: cita.estado,
+                          paciente_id: cita.paciente_id,
+                          profesional_id: cita.profesional_id
+                        }
+                      }))}
+                    eventClick={handleEventClick}
+                    eventDrop={handleEventDrop}
+                    select={handleDateSelect}
+                    height="auto"
+                    buttonText={{
+                      today: 'Hoy',
+                      month: 'Mes',
+                      week: 'Semana',
+                      day: 'Día'
+                    }}
+                  />
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Lista de citas */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  Citas de Hoy - {format(selectedDate, "d 'de' MMMM", { locale: es })}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                  </div>
-                ) : citas.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600">No hay citas programadas</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {citas.map((cita) => (
-                      <div
-                        key={cita.id}
-                        className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-semibold text-gray-900">
-                                {cita.titulo || "Cita"}
-                              </h3>
-                              <Badge className={getEstadoColor(cita.estado)}>
-                                {cita.estado}
-                              </Badge>
-                            </div>
-                            
-                            <div className="space-y-1 text-sm text-gray-600">
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-4 w-4" />
-                                {format(new Date(cita.inicio), "HH:mm", { locale: es })} - 
-                                {format(new Date(cita.fin), "HH:mm", { locale: es })}
-                              </div>
-                              {cita.paciente_nombre && (
-                                <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4" />
-                                  {cita.paciente_nombre}
-                                </div>
-                              )}
-                              {cita.recurso_nombre && (
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="h-4 w-4" />
-                                  {cita.recurso_nombre}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              Editar
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Cancelar
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          {/* Leyenda de estados */}
+          <Card className="mt-6">
+            <CardContent className="py-4">
+              <div className="flex items-center gap-6 flex-wrap">
+                <span className="text-sm font-medium text-gray-700">Leyenda:</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#0AA640' }}></div>
+                  <span className="text-sm text-gray-600">Confirmada</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-yellow-500"></div>
+                  <span className="text-sm text-gray-600">Pendiente</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#056CF2' }}></div>
+                  <span className="text-sm text-gray-600">Completada</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-red-500"></div>
+                  <span className="text-sm text-gray-600">Cancelada</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </main>
+
+        {/* Modales */}
+        <CitaModal 
+          open={showCitaModal}
+          onClose={() => setShowCitaModal(false)}
+          onSuccess={fetchCitas}
+        />
+
+        {selectedEvento && (
+          <EventPopup
+            open={!!selectedEvento}
+            onClose={() => setSelectedEvento(null)}
+            onSuccess={fetchCitas}
+            evento={selectedEvento}
+          />
+        )}
       </div>
     </div>
   )

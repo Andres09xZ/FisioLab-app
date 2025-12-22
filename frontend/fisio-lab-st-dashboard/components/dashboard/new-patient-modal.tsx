@@ -42,37 +42,58 @@ export function NewPatientModal({ open, onOpenChange }: NewPatientModalProps) {
   const [emergenciaNombre, setEmergenciaNombre] = useState("")
   const [emergenciaTelefono, setEmergenciaTelefono] = useState("")
   
+  // Información Laboral
+  const [profesion, setProfesion] = useState("")
+  const [tipoTrabajo, setTipoTrabajo] = useState("")
+  
   // Antecedentes Médicos
   const [antecedentes, setAntecedentes] = useState<string[]>([])
+  const [detallesAntecedentes, setDetallesAntecedentes] = useState<Record<string, string>>({})
   
   // Notas
   const [notas, setNotas] = useState("")
 
   const ANTECEDENTES_OPTIONS = [
-    "Cáncer",
-    "Hemopatías",
-    "Diabetes",
-    "Hipertensión arterial",
-    "Problemas cardíacos",
-    "Marcapasos",
-    "Embarazo",
-    "Epilepsia",
-    "Alergias",
-    "Problemas tiroideos",
-    "Osteoporosis",
-    "Cirugías recientes",
-    "Prótesis metálicas",
-    "Infecciones activas",
-    "Trombosis",
-    "Otra patología"
+    { id: "cancer", label: "Cáncer", requiresDetail: true },
+    { id: "hemopatias", label: "Hemopatías", requiresDetail: true },
+    { id: "diabetes", label: "Diabetes", requiresDetail: false },
+    { id: "hipertension", label: "Hipertensión arterial", requiresDetail: false },
+    { id: "problemas_cardiacos", label: "Problemas cardíacos", requiresDetail: true },
+    { id: "marcapasos", label: "Marcapasos", requiresDetail: false },
+    { id: "embarazo", label: "Embarazo", requiresDetail: false },
+    { id: "epilepsia", label: "Epilepsia", requiresDetail: false },
+    { id: "alergias", label: "Alergias", requiresDetail: true },
+    { id: "problemas_tiroideos", label: "Problemas tiroideos", requiresDetail: true },
+    { id: "osteoporosis", label: "Osteoporosis", requiresDetail: false },
+    { id: "cirugias", label: "Cirugías recientes", requiresDetail: true },
+    { id: "protesis", label: "Prótesis metálicas", requiresDetail: true },
+    { id: "infecciones", label: "Infecciones activas", requiresDetail: true },
+    { id: "trombosis", label: "Trombosis", requiresDetail: true },
+    { id: "otra", label: "Otra patología", requiresDetail: true },
   ]
 
-  const toggleAntecedente = (antecedente: string) => {
-    setAntecedentes(prev => 
-      prev.includes(antecedente)
-        ? prev.filter(a => a !== antecedente)
-        : [...prev, antecedente]
-    )
+  const toggleAntecedente = (antecedenteId: string) => {
+    setAntecedentes(prev => {
+      const newSelection = prev.includes(antecedenteId)
+        ? prev.filter(a => a !== antecedenteId)
+        : [...prev, antecedenteId]
+      
+      // Si se desmarca, limpiar el detalle
+      if (prev.includes(antecedenteId)) {
+        const newDetalles = { ...detallesAntecedentes }
+        delete newDetalles[antecedenteId]
+        setDetallesAntecedentes(newDetalles)
+      }
+      
+      return newSelection
+    })
+  }
+
+  const handleDetalleChange = (antecedenteId: string, value: string) => {
+    setDetallesAntecedentes(prev => ({
+      ...prev,
+      [antecedenteId]: value
+    }))
   }
 
   const calcularEdad = (fecha: Date) => {
@@ -96,9 +117,34 @@ export function NewPatientModal({ open, onOpenChange }: NewPatientModalProps) {
       return
     }
 
+    // Validar que los antecedentes que requieren detalle lo tengan
+    const antecedentesConDetalleRequerido = ANTECEDENTES_OPTIONS.filter(
+      ant => ant.requiresDetail && antecedentes.includes(ant.id)
+    )
+    
+    const faltanDetalles = antecedentesConDetalleRequerido.some(
+      ant => !detallesAntecedentes[ant.id]?.trim()
+    )
+
+    if (faltanDetalles) {
+      toast({
+        title: "Información incompleta",
+        description: "Por favor especifica los detalles de los antecedentes médicos seleccionados",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
     try {
       const edad = fechaNacimiento ? calcularEdad(fechaNacimiento) : 0
+      
+      // Construir el texto de antecedentes con detalles
+      const antecedentesTexto = antecedentes.map(id => {
+        const opcion = ANTECEDENTES_OPTIONS.find(opt => opt.id === id)
+        const detalle = detallesAntecedentes[id]
+        return detalle ? `${opcion?.label}: ${detalle}` : opcion?.label
+      }).join(", ")
       
       const pacienteData = {
         nombres,
@@ -113,7 +159,9 @@ export function NewPatientModal({ open, onOpenChange }: NewPatientModalProps) {
         direccion: direccion || null,
         emergencia_nombre: emergenciaNombre || null,
         emergencia_telefono: emergenciaTelefono || null,
-        antecedentes_medicos: antecedentes.join(", ") || null,
+        profesion: profesion || null,
+        tipo_trabajo: tipoTrabajo || null,
+        antecedentes_medicos: antecedentesTexto || null,
         notas: notas || null,
         activo: true,
       }
@@ -169,7 +217,10 @@ export function NewPatientModal({ open, onOpenChange }: NewPatientModalProps) {
     setDireccion("")
     setEmergenciaNombre("")
     setEmergenciaTelefono("")
+    setProfesion("")
+    setTipoTrabajo("")
     setAntecedentes([])
+    setDetallesAntecedentes({})
     setNotas("")
   }
 
@@ -443,7 +494,45 @@ export function NewPatientModal({ open, onOpenChange }: NewPatientModalProps) {
 
           <Separator />
 
-          {/* SECCIÓN 3: ANTECEDENTES MÉDICOS */}
+          {/* SECCIÓN 3: INFORMACIÓN LABORAL */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-1 bg-[#4BA4F2] rounded-full" />
+              <h3 className="text-lg font-semibold text-gray-800">Información Laboral</h3>
+            </div>
+
+            <div className="grid grid-cols-12 gap-4">
+              <div className="col-span-6 space-y-2">
+                <Label htmlFor="profesion" className="text-sm font-medium">
+                  Profesión
+                </Label>
+                <Input
+                  id="profesion"
+                  value={profesion}
+                  onChange={(e) => setProfesion(e.target.value)}
+                  placeholder="Ej. Enfermera, Ingeniero, etc."
+                  className="h-10"
+                />
+              </div>
+
+              <div className="col-span-6 space-y-2">
+                <Label htmlFor="tipo_trabajo" className="text-sm font-medium">
+                  Tipo de Trabajo
+                </Label>
+                <Input
+                  id="tipo_trabajo"
+                  value={tipoTrabajo}
+                  onChange={(e) => setTipoTrabajo(e.target.value)}
+                  placeholder="Ej. Turnos rotativos, Oficina, etc."
+                  className="h-10"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* SECCIÓN 4: ANTECEDENTES MÉDICOS */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="h-8 w-1 bg-red-500 rounded-full" />
@@ -453,31 +542,65 @@ export function NewPatientModal({ open, onOpenChange }: NewPatientModalProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg">
-              {ANTECEDENTES_OPTIONS.map((opcion) => (
-                <div key={opcion} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={opcion}
-                    checked={antecedentes.includes(opcion)}
-                    onCheckedChange={() => toggleAntecedente(opcion)}
-                  />
-                  <Label
-                    htmlFor={opcion}
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    {opcion}
-                  </Label>
+            <div className="space-y-4">
+              {/* Grid de opciones */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg">
+                {ANTECEDENTES_OPTIONS.map((opcion) => (
+                  <div key={opcion.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={opcion.id}
+                      checked={antecedentes.includes(opcion.id)}
+                      onCheckedChange={() => toggleAntecedente(opcion.id)}
+                    />
+                    <Label
+                      htmlFor={opcion.id}
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {opcion.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+
+              {/* Inputs de detalle para antecedentes seleccionados */}
+              {antecedentes.some(id => ANTECEDENTES_OPTIONS.find(opt => opt.id === id)?.requiresDetail) && (
+                <div className="space-y-3 p-4 bg-[#F0E6FF] border border-[#D466F2] rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="h-1 w-1 bg-[#D466F2] rounded-full" />
+                    <p className="text-sm font-medium text-[#8B3AB8]">Especifique los detalles de los antecedentes seleccionados:</p>
+                  </div>
+                  
+                  {ANTECEDENTES_OPTIONS.filter(opt => opt.requiresDetail && antecedentes.includes(opt.id)).map((opcion) => (
+                    <div key={`detalle-${opcion.id}`} className="space-y-1.5">
+                      <Label htmlFor={`detalle-${opcion.id}`} className="text-sm font-medium text-gray-700">
+                        {opcion.label}
+                      </Label>
+                      <Input
+                        id={`detalle-${opcion.id}`}
+                        placeholder={`Ej: ${
+                          opcion.id === 'cancer' ? 'Cáncer de mama en remisión' :
+                          opcion.id === 'alergias' ? 'Penicilina, mariscos' :
+                          opcion.id === 'cirugias' ? 'Apendicectomía 2023' :
+                          opcion.id === 'otra' ? 'Especifique la patología' :
+                          `Detalles de ${opcion.label.toLowerCase()}`
+                        }`}
+                        value={detallesAntecedentes[opcion.id] || ""}
+                        onChange={(e) => handleDetalleChange(opcion.id, e.target.value)}
+                        className="bg-white border-[#D466F2] focus:border-[#D466F2] focus:ring-[#D466F2]"
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
           <Separator />
 
-          {/* SECCIÓN 4: NOTAS ADICIONALES */}
+          {/* SECCIÓN 5: NOTAS ADICIONALES */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-1 bg-blue-500 rounded-full" />
+              <div className="h-8 w-1 bg-purple-500 rounded-full" />
               <h3 className="text-lg font-semibold text-gray-800">Notas Adicionales</h3>
             </div>
 
@@ -513,7 +636,7 @@ export function NewPatientModal({ open, onOpenChange }: NewPatientModalProps) {
           <Button 
             onClick={handleSubmit} 
             disabled={loading} 
-            className="bg-green-600 hover:bg-green-700 px-6"
+            className="bg-[#0AA640] hover:bg-[#098A36] px-6"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {loading ? "Guardando..." : "Crear Paciente"}

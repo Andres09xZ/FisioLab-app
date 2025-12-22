@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { listPacientes, createPaciente, getPaciente, updatePaciente } from '../controllers/pacientes.controller.js';
+import { listPacientes, createPaciente, getPaciente, updatePaciente, deletePaciente } from '../controllers/pacientes.controller.js';
 import { listEvaluacionesByPaciente } from '../controllers/evaluaciones.controller.js';
+import { getSesionesPendientesPaciente } from '../controllers/sesiones.controller.js';
 
 const router = Router();
 
@@ -90,6 +91,28 @@ router.put('/:id', updatePaciente);
 
 /**
  * @swagger
+ * /api/pacientes/{id}:
+ *   delete:
+ *     summary: Eliminar paciente
+ *     tags: [Pacientes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Paciente eliminado
+ *       404:
+ *         description: No encontrado
+ *       409:
+ *         description: No se puede eliminar (tiene registros asociados)
+ */
+router.delete('/:id', deletePaciente);
+
+/**
+ * @swagger
  * /api/pacientes/{id}/evaluaciones:
  *   get:
  *     summary: Listar evaluaciones de un paciente
@@ -136,5 +159,54 @@ router.put('/:id', updatePaciente);
  *         description: Error del servidor
  */
 router.get('/:id/evaluaciones', listEvaluacionesByPaciente);
+
+/**
+ * @swagger
+ * /api/pacientes/{id}/sesiones-pendientes:
+ *   get:
+ *     summary: Obtener sesiones pendientes de un paciente
+ *     description: Retorna las sesiones que aún no tienen cita asignada y pertenecen a planes activos
+ *     tags: [Pacientes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del paciente
+ *     responses:
+ *       200:
+ *         description: Sesiones pendientes del paciente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       plan_id:
+ *                         type: string
+ *                       estado:
+ *                         type: string
+ *                       plan_objetivo:
+ *                         type: string
+ *                       sesiones_plan:
+ *                         type: integer
+ *                       sesiones_completadas:
+ *                         type: integer
+ *                 total_pendientes:
+ *                   type: integer
+ *       500:
+ *         description: Error del servidor
+ */
+router.get('/:id/sesiones-pendientes', getSesionesPendientesPaciente);
 
 export default router;

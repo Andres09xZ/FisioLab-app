@@ -3,14 +3,15 @@
 import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, Calendar, Users, UserPlus, ClipboardList, BarChart3, DollarSign, Settings } from "lucide-react"
+import { Home, Calendar, Users, ClipboardList, BarChart3, DollarSign, Settings, Stethoscope } from "lucide-react"
+import Image from "next/image"
 
 const menuItems = [
   { icon: Home, label: "Dashboard", href: "/dashboard" },
   { icon: Calendar, label: "Agenda", badge: "Hoy", href: "/agenda" },
   { icon: Users, label: "Pacientes", badge: 8, href: "/pacientes" },
-  { icon: UserPlus, label: "Nuevo Paciente", href: "/nuevo-paciente" },
   { icon: ClipboardList, label: "Sesiones", href: "/sesiones" },
+  { icon: Stethoscope, label: "Profesionales", href: "/profesionales" },
   { icon: BarChart3, label: "Reportes", href: "/reportes" },
   { icon: DollarSign, label: "Finanzas", href: "/finanzas" },
   { icon: Settings, label: "Configuración", href: "/configuracion" },
@@ -22,10 +23,35 @@ export function DashboardSidebar() {
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-emerald-600">FisioLab ST</h1>
-        <p className="text-sm text-gray-500 mt-1">Gestión Profesional</p>
+      {/* Logo Section - Optimizado UI/UX */}
+      <div className="p-5 border-b border-gray-200 bg-linear-to-b from-white to-gray-50">
+        <div className="flex items-center justify-center gap-3">
+          {/* Logo Principal FisioLab - Texto */}
+          <div className="relative">
+            <Image
+              src="/fisiolab-logo.png"
+              alt="FisioLab"
+              width={180}
+              height={50}
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
+        
+        {/* Logo Circular ST - Centrado debajo */}
+        <div className="flex justify-center mt-3">
+          <div className="relative">
+            <Image
+              src="/st-logo.png"
+              alt="ST Logo"
+              width={55}
+              height={55}
+              className="object-contain drop-shadow-md"
+              priority
+            />
+          </div>
+        </div>
       </div>
 
       {/* Menu */}
@@ -40,11 +66,11 @@ export function DashboardSidebar() {
               onClick={() => router.push(item.href)}
               className={cn(
                 "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all",
-                isActive ? "bg-emerald-50 text-emerald-700 font-semibold shadow-sm" : "text-gray-600 hover:bg-gray-50",
+                isActive ? "bg-[#F0E6FF] text-[#8B3AB8] font-semibold shadow-sm" : "text-gray-600 hover:bg-gray-50",
               )}
             >
               <div className="flex items-center gap-3">
-                <Icon className={cn("h-5 w-5", isActive ? "text-emerald-600" : "text-gray-400")} />
+                <Icon className={cn("h-5 w-5", isActive ? "text-[#D466F2]" : "text-gray-400")} />
                 <span>{item.label}</span>
               </div>
 
@@ -52,7 +78,7 @@ export function DashboardSidebar() {
                 <span
                   className={cn(
                     "px-2 py-0.5 rounded-full text-xs font-semibold",
-                    typeof item.badge === "number" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
+                    typeof item.badge === "number" ? "bg-[#E6FFF5] text-[#0AA640]" : "bg-amber-100 text-amber-700",
                   )}
                 >
                   {item.badge}
@@ -65,10 +91,10 @@ export function DashboardSidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200">
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-4 text-white">
+        <div className="bg-linear-to-r from-[#0AA640] to-[#04D9D9] rounded-xl p-4 text-white">
           <p className="text-sm font-semibold mb-1">¿Necesitas ayuda?</p>
           <p className="text-xs opacity-90 mb-3">Contacta a soporte técnico</p>
-          <button className="w-full bg-white text-emerald-600 text-sm font-semibold py-2 rounded-lg hover:bg-gray-50 transition-colors">
+          <button className="w-full bg-white text-[#0AA640] text-sm font-semibold py-2 rounded-lg hover:bg-gray-50 transition-colors">
             Soporte
           </button>
         </div>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
 
@@ -17,49 +18,87 @@ interface HistoriaClinicaModalProps {
 }
 
 const ANTECEDENTES_OPTIONS = [
-  { id: "cancer", label: "Cáncer" },
-  { id: "hemopatias", label: "Hemopatías" },
-  { id: "marcapasos", label: "Marcapasos" },
-  { id: "diabetes", label: "Diabetes" },
-  { id: "tuberculosis", label: "Tuberculosis" },
-  { id: "digestivos_cardiacos", label: "Digestivos Cardiacos" },
-  { id: "insuficiencia_renal", label: "Insuficiencia Renal" },
-  { id: "bronquitis", label: "Bronquitis" },
-  { id: "heridas", label: "Heridas" },
-  { id: "cardiopatias", label: "Cardiopatías" },
-  { id: "trombosis", label: "Trombosis" },
-  { id: "enfer_de_la_piel", label: "Enfer. de la piel" },
-  { id: "endocarditis", label: "Endocarditis" },
-  { id: "hemorragias_activas", label: "Hemorragias Activas" },
-  { id: "epilepsias", label: "Epilepsias" },
-  { id: "hipertension", label: "Hipertensión" },
-  { id: "implantes_metalicos", label: "Implantes Metálicos" },
-  { id: "alterac_sensibilidad", label: "Alterac. de la sensibilidad" },
+  { id: "cancer", label: "Cáncer", requiresDetail: true },
+  { id: "hemopatias", label: "Hemopatías", requiresDetail: true },
+  { id: "marcapasos", label: "Marcapasos", requiresDetail: false },
+  { id: "diabetes", label: "Diabetes", requiresDetail: false },
+  { id: "tuberculosis", label: "Tuberculosis", requiresDetail: true },
+  { id: "digestivos_cardiacos", label: "Digestivos Cardiacos", requiresDetail: true },
+  { id: "insuficiencia_renal", label: "Insuficiencia Renal", requiresDetail: true },
+  { id: "bronquitis", label: "Bronquitis", requiresDetail: false },
+  { id: "heridas", label: "Heridas", requiresDetail: true },
+  { id: "cardiopatias", label: "Cardiopatías", requiresDetail: true },
+  { id: "trombosis", label: "Trombosis", requiresDetail: true },
+  { id: "enfer_de_la_piel", label: "Enfer. de la piel", requiresDetail: true },
+  { id: "endocarditis", label: "Endocarditis", requiresDetail: false },
+  { id: "hemorragias_activas", label: "Hemorragias Activas", requiresDetail: true },
+  { id: "epilepsias", label: "Epilepsias", requiresDetail: false },
+  { id: "hipertension", label: "Hipertensión", requiresDetail: false },
+  { id: "implantes_metalicos", label: "Implantes Metálicos", requiresDetail: true },
+  { id: "alterac_sensibilidad", label: "Alterac. de la sensibilidad", requiresDetail: true },
+  { id: "otra_patologica", label: "Otra patológica", requiresDetail: true },
 ]
 
 export function HistoriaClinicaModal({ open, onOpenChange, pacienteId, pacienteNombre }: HistoriaClinicaModalProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   
+  const [profesion, setProfesion] = useState("")
+  const [tipoTrabajo, setTipoTrabajo] = useState("")
   const [antecedentesSeleccionados, setAntecedentesSeleccionados] = useState<string[]>([])
+  const [detallesAntecedentes, setDetallesAntecedentes] = useState<Record<string, string>>({})
   const [otros, setOtros] = useState("")
   const [notas, setNotas] = useState("")
   const [alergias, setAlergias] = useState("")
   const [diagnostico, setDiagnostico] = useState("")
 
   const handleToggleAntecedente = (antecedenteId: string) => {
-    setAntecedentesSeleccionados(prev => 
-      prev.includes(antecedenteId)
+    setAntecedentesSeleccionados(prev => {
+      const newSelection = prev.includes(antecedenteId)
         ? prev.filter(id => id !== antecedenteId)
         : [...prev, antecedenteId]
-    )
+      
+      // Si se desmarca, limpiar el detalle
+      if (prev.includes(antecedenteId)) {
+        const newDetalles = { ...detallesAntecedentes }
+        delete newDetalles[antecedenteId]
+        setDetallesAntecedentes(newDetalles)
+      }
+      
+      return newSelection
+    })
+  }
+
+  const handleDetalleChange = (antecedenteId: string, value: string) => {
+    setDetallesAntecedentes(prev => ({
+      ...prev,
+      [antecedenteId]: value
+    }))
   }
 
   const handleSubmit = async () => {
-    if (antecedentesSeleccionados.length === 0 && !otros && !notas && !alergias && !diagnostico) {
+    if (antecedentesSeleccionados.length === 0 && !otros && !notas && !alergias && !diagnostico && !profesion && !tipoTrabajo) {
       toast({
         title: "Error",
         description: "Debes completar al menos un campo",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validar que los antecedentes que requieren detalle lo tengan
+    const antecedentesConDetalleRequerido = ANTECEDENTES_OPTIONS.filter(
+      ant => ant.requiresDetail && antecedentesSeleccionados.includes(ant.id)
+    )
+    
+    const faltanDetalles = antecedentesConDetalleRequerido.some(
+      ant => !detallesAntecedentes[ant.id]?.trim()
+    )
+
+    if (faltanDetalles) {
+      toast({
+        title: "Error",
+        description: "Por favor especifica los detalles de los antecedentes seleccionados",
         variant: "destructive",
       })
       return
@@ -76,7 +115,10 @@ export function HistoriaClinicaModal({ open, onOpenChange, pacienteId, pacienteN
         body: JSON.stringify({
           paciente_id: pacienteId,
           historia: {
+            profesion,
+            tipo_trabajo: tipoTrabajo,
             antecedentes: antecedentesSeleccionados,
+            detalles_antecedentes: detallesAntecedentes,
             otros,
             notas,
             alergias,
@@ -111,7 +153,10 @@ export function HistoriaClinicaModal({ open, onOpenChange, pacienteId, pacienteN
   }
 
   const resetForm = () => {
+    setProfesion("")
+    setTipoTrabajo("")
     setAntecedentesSeleccionados([])
+    setDetallesAntecedentes({})
     setOtros("")
     setNotas("")
     setAlergias("")
@@ -129,23 +174,66 @@ export function HistoriaClinicaModal({ open, onOpenChange, pacienteId, pacienteN
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Información Laboral */}
+          <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className="font-semibold text-lg text-blue-900">Información Laboral</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              {/* Profesión */}
+              <div className="space-y-2">
+                <Label htmlFor="profesion">Profesión</Label>
+                <Input
+                  id="profesion"
+                  placeholder="Ej: Ingeniero, Contador, etc."
+                  value={profesion}
+                  onChange={(e) => setProfesion(e.target.value)}
+                />
+              </div>
+
+              {/* Tipo de Trabajo */}
+              <div className="space-y-2">
+                <Label htmlFor="tipoTrabajo">Tipo de Trabajo</Label>
+                <Input
+                  id="tipoTrabajo"
+                  placeholder="Ej: Oficina, Campo, Remoto, etc."
+                  value={tipoTrabajo}
+                  onChange={(e) => setTipoTrabajo(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Antecedentes Patológicos */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">Antecedentes Patológicos</Label>
-            <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
               {ANTECEDENTES_OPTIONS.map((antecedente) => (
-                <div key={antecedente.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={antecedente.id}
-                    checked={antecedentesSeleccionados.includes(antecedente.id)}
-                    onCheckedChange={() => handleToggleAntecedente(antecedente.id)}
-                  />
-                  <label
-                    htmlFor={antecedente.id}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {antecedente.label}
-                  </label>
+                <div key={antecedente.id} className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={antecedente.id}
+                      checked={antecedentesSeleccionados.includes(antecedente.id)}
+                      onCheckedChange={() => handleToggleAntecedente(antecedente.id)}
+                    />
+                    <label
+                      htmlFor={antecedente.id}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {antecedente.label}
+                    </label>
+                  </div>
+                  
+                  {/* Input de detalle si está seleccionado y requiere detalle */}
+                  {antecedente.requiresDetail && antecedentesSeleccionados.includes(antecedente.id) && (
+                    <div className="ml-6 mt-2">
+                      <Input
+                        placeholder={`Especifique detalles de ${antecedente.label.toLowerCase()}...`}
+                        value={detallesAntecedentes[antecedente.id] || ""}
+                        onChange={(e) => handleDetalleChange(antecedente.id, e.target.value)}
+                        className="bg-white"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

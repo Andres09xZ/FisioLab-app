@@ -5,6 +5,7 @@ import recursosRoutes from './recursos.routes.js';
 import pacientesRoutes from './pacientes.routes.js';
 import evaluacionesRoutes from './evaluaciones.routes.js';
 import citasRoutes from './citas.routes.js';
+import agendaRoutes from './agenda.routes.js';
 import planesRoutes from './planes.routes.js';
 import sesionesRoutes from './sesiones.routes.js';
 import archivosRoutes from './archivos.routes.js';
@@ -22,6 +23,7 @@ router.use('/recursos', recursosRoutes);
 router.use('/pacientes', pacientesRoutes);
 router.use('/evaluaciones', evaluacionesRoutes);
 router.use('/citas', citasRoutes);
+router.use('/agenda', agendaRoutes);
 router.use('/sesiones', sesionesRoutes);
 // Rutas con paths completos dentro del módulo
 router.use('/', planesRoutes);

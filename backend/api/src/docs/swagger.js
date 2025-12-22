@@ -144,6 +144,8 @@ const options = {
               example: ['Cáncer', 'Hemopatías', 'Diabetes']
             },
             notas: { type: 'string', nullable: true, example: 'Notas adicionales del paciente' },
+            profesion: { type: 'string', nullable: true, description: 'Profesión u ocupación del paciente', example: 'Enfermera' },
+            tipo_trabajo: { type: 'string', nullable: true, description: 'Tipo de trabajo o jornada laboral', example: 'Turnos rotativos, oficina, trabajo físico' },
             activo: { type: 'boolean' }
           }
         },
@@ -154,11 +156,15 @@ const options = {
             id: { type: 'string', format: 'uuid' },
             paciente_id: { type: 'string', format: 'uuid' },
             fecha_evaluacion: { type: 'string', format: 'date-time', description: 'Fecha de la evaluación (por defecto NOW)' },
-            // 1. Factores ocupacionales
-            profesion: { type: 'string', nullable: true, example: 'Enfermera' },
-            tipo_trabajo: { type: 'string', nullable: true, example: 'Turnos rotativos' },
-            sedestacion_prolongada: { type: 'string', nullable: true, example: 'Sí, 8 horas' },
-            esfuerzo_fisico: { type: 'string', nullable: true, example: 'Bajo, Medio, Alto' },
+            // Escala EVA (Visual Analogue Scale) 0-10
+            escala_eva: { 
+              type: 'integer', 
+              nullable: true, 
+              minimum: 0, 
+              maximum: 10,
+              description: 'Escala Visual Analógica de dolor (0=sin dolor, 1-3=poco dolor, 4=moderado, 5-6=fuerte, 7-8=muy fuerte, 9-10=extremo)',
+              example: 5
+            },
             // 2. Motivo de la consulta
             motivo_consulta: { type: 'string', nullable: true, example: 'Dolor lumbar crónico' },
             desde_cuando: { type: 'string', nullable: true, example: '3 meses' },
@@ -228,7 +234,7 @@ const options = {
             id: { type: 'string' },
             cita_id: { type: 'string', nullable: true },
             paciente_id: { type: 'string' },
-            profesional_id: { type: 'string' },
+            profesional_id: { type: 'string', nullable: true, description: 'Opcional: ID del profesional que atendió la sesión' },
             fecha: { type: 'string', format: 'date-time' },
             notas: { type: 'string', nullable: true },
             estado: { type: 'string' }

@@ -10,33 +10,33 @@
   --card-foreground: #111827;
   --popover: #ffffff;
   --popover-foreground: #111827;
-  --primary: #10b981;
+  --primary: #D466F2;
   --primary-foreground: #ffffff;
-  --secondary: #059669;
+  --secondary: #056CF2;
   --secondary-foreground: #ffffff;
   --muted: #f3f4f6;
   --muted-foreground: #6b7280;
-  --accent: #34d399;
-  --accent-foreground: #111827;
+  --accent: #4BA4F2;
+  --accent-foreground: #ffffff;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
   --border: #e5e7eb;
   --input: #e5e7eb;
-  --ring: #10b981;
-  --chart-1: #10b981;
-  --chart-2: #3b82f6;
-  --chart-3: #8b5cf6;
-  --chart-4: #f59e0b;
-  --chart-5: #ef4444;
+  --ring: #D466F2;
+  --chart-1: #D466F2;
+  --chart-2: #056CF2;
+  --chart-3: #4BA4F2;
+  --chart-4: #04D9D9;
+  --chart-5: #0AA640;
   --radius: 1rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #111827;
-  --sidebar-primary: #10b981;
+  --sidebar-primary: #D466F2;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f9fafb;
+  --sidebar-accent: #f3f0f9;
   --sidebar-accent-foreground: #111827;
   --sidebar-border: #e5e7eb;
-  --sidebar-ring: #10b981;
+  --sidebar-ring: #D466F2;
 }
 
 .dark {
@@ -75,7 +75,7 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -122,4 +122,98 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Estilos para el input range de la escala EVA */
+input[type="range"].eva-slider {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="range"].eva-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1f2937;
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"].eva-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1f2937;
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"].eva-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+input[type="range"].eva-slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
+
+/* FullCalendar Custom Styles */
+.fullcalendar-wrapper {
+  --fc-border-color: #e5e7eb;
+  --fc-button-bg-color: #056CF2;
+  --fc-button-border-color: #056CF2;
+  --fc-button-hover-bg-color: #0558C9;
+  --fc-button-hover-border-color: #0558C9;
+  --fc-button-active-bg-color: #044BA6;
+  --fc-button-active-border-color: #044BA6;
+  --fc-today-bg-color: rgba(5, 108, 242, 0.1);
+}
+
+.fullcalendar-wrapper .fc {
+  font-family: inherit;
+}
+
+.fullcalendar-wrapper .fc-button {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  text-transform: capitalize;
+}
+
+.fullcalendar-wrapper .fc-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.fullcalendar-wrapper .fc-col-header-cell {
+  background-color: #f9fafb;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #6b7280;
+  padding: 0.5rem;
+}
+
+.fullcalendar-wrapper .fc-event {
+  cursor: pointer;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.fullcalendar-wrapper .fc-event:hover {
+  opacity: 0.9;
+}
+
+.fullcalendar-wrapper .fc-timegrid-slot {
+  height: 3rem;
+}
+
+.fullcalendar-wrapper .fc-timegrid-slot-label {
+  font-size: 0.75rem;
+  color: #6b7280;
 }

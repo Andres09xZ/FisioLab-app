@@ -31,6 +31,10 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       const response = await fetch("http://localhost:3001/api/dashboard/resumen")
+      if (!response.ok) {
+        console.warn("Error en API dashboard/resumen:", response.status)
+        return
+      }
       const data = await response.json()
       if (data.success) {
         setDashboardData(data.data)
@@ -44,6 +48,10 @@ export default function DashboardPage() {
     try {
       const year = new Date().getFullYear()
       const response = await fetch(`http://localhost:3001/api/dashboard/ingresos-mes?year=${year}`)
+      if (!response.ok) {
+        console.warn("Error en API dashboard/ingresos-mes:", response.status)
+        return
+      }
       const data = await response.json()
       if (data.success) {
         setIngresosData(data.data || [])

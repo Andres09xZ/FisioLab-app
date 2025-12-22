@@ -8,7 +8,7 @@ export const listPacientes = async (req, res) => {
     const { q } = req.query; // search by name or documento
   let sql = `SELECT 
       p.id, p.nombres, p.apellidos, p.tipo_documento, p.documento, p.celular, p.email, p.sexo, p.edad,
-      p.emergencia_nombre, p.emergencia_telefono, p.activo, p.antecedentes, p.notas
+      p.emergencia_nombre, p.emergencia_telefono, p.activo, p.antecedentes, p.notas, p.profesion, p.tipo_trabajo
     FROM pacientes p
     WHERE p.activo = true`;
     const params = [];
@@ -27,7 +27,7 @@ export const listPacientes = async (req, res) => {
 
 export const createPaciente = async (req, res) => {
   try {
-    const { nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas } = req.body;
+    const { nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, profesion, tipo_trabajo } = req.body;
     // Normalizar sexo a CHAR(1) (M/F/O) si envían palabras completas
     const sexoMap = { masculino: 'M', femenino: 'F', otro: 'O' };
     const sexoNorm = typeof sexo === 'string'
@@ -43,10 +43,10 @@ export const createPaciente = async (req, res) => {
     // Preparar antecedentes como JSONB array
     const antecedentesJson = Array.isArray(antecedentes) ? JSON.stringify(antecedentes) : '[]';
     const { rows } = await query(
-  `INSERT INTO pacientes (nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, activo)
-   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, true)
-   RETURNING id, nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, activo`,
-  [nombres, apellidos, tipoDocNorm, documento || null, celular || null, email || null, direccion || null, fecha_nacimiento || null, sexoNorm, typeof edad === 'number' ? edad : null, emergencia_nombre || null, emergencia_telefono || null, antecedentesJson, notas || null]
+  `INSERT INTO pacientes (nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, profesion, tipo_trabajo, activo)
+   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, true)
+   RETURNING id, nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, profesion, tipo_trabajo, activo`,
+  [nombres, apellidos, tipoDocNorm, documento || null, celular || null, email || null, direccion || null, fecha_nacimiento || null, sexoNorm, typeof edad === 'number' ? edad : null, emergencia_nombre || null, emergencia_telefono || null, antecedentesJson, notas || null, profesion || null, tipo_trabajo || null]
     );
     return res.status(201).json({ success: true, data: rows[0] });
   } catch (err) {
@@ -66,7 +66,7 @@ export const getPaciente = async (req, res) => {
       `SELECT 
          p.id, p.nombres, p.apellidos, p.tipo_documento, p.documento, p.celular, p.email,
          p.direccion, p.fecha_nacimiento, p.sexo, p.edad, p.emergencia_nombre, p.emergencia_telefono, 
-         p.antecedentes, p.notas, p.activo
+         p.antecedentes, p.notas, p.profesion, p.tipo_trabajo, p.activo
        FROM pacientes p
        WHERE p.id = $1`,
       [id]
@@ -82,7 +82,7 @@ export const getPaciente = async (req, res) => {
 export const updatePaciente = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, activo } = req.body;
+    const { nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, profesion, tipo_trabajo, activo } = req.body;
     const sexoMap2 = { masculino: 'M', femenino: 'F', otro: 'O' };
     const sexoNorm2 = typeof sexo === 'string'
       ? (sexo.length === 1 ? sexo.toUpperCase() : (sexoMap2[sexo.toLowerCase()] || null))
@@ -108,11 +108,13 @@ export const updatePaciente = async (req, res) => {
         emergencia_telefono = COALESCE($13, emergencia_telefono),
         antecedentes = COALESCE($14::jsonb, antecedentes),
         notas = COALESCE($15, notas),
-        activo = COALESCE($16, activo),
+        profesion = COALESCE($16, profesion),
+        tipo_trabajo = COALESCE($17, tipo_trabajo),
+        activo = COALESCE($18, activo),
         actualizado_en = NOW()
       WHERE id = $1
-      RETURNING id, nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, activo`,
-  [id, nombres || null, apellidos || null, tipoDocNorm2, documento || null, celular || null, email || null, direccion || null, fecha_nacimiento || null, sexoNorm2, typeof edad === 'number' ? edad : null, emergencia_nombre || null, emergencia_telefono || null, antecedentesJson, notas || null, typeof activo === 'boolean' ? activo : null]
+      RETURNING id, nombres, apellidos, tipo_documento, documento, celular, email, direccion, fecha_nacimiento, sexo, edad, emergencia_nombre, emergencia_telefono, antecedentes, notas, profesion, tipo_trabajo, activo`,
+  [id, nombres || null, apellidos || null, tipoDocNorm2, documento || null, celular || null, email || null, direccion || null, fecha_nacimiento || null, sexoNorm2, typeof edad === 'number' ? edad : null, emergencia_nombre || null, emergencia_telefono || null, antecedentesJson, notas || null, profesion || null, tipo_trabajo || null, typeof activo === 'boolean' ? activo : null]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
     return res.json({ success: true, data: rows[0] });
@@ -122,4 +124,33 @@ export const updatePaciente = async (req, res) => {
   }
 };
 
+export const deletePaciente = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar si el paciente existe
+    const checkResult = await query('SELECT id, nombres, apellidos FROM pacientes WHERE id = $1', [id]);
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
+    }
+    
+    // Eliminar el paciente (las tablas relacionadas se eliminan por CASCADE o se deben manejar primero)
+    await query('DELETE FROM pacientes WHERE id = $1', [id]);
+    
+    return res.json({ 
+      success: true, 
+      message: `Paciente ${checkResult.rows[0].nombres} ${checkResult.rows[0].apellidos} eliminado correctamente` 
+    });
+  } catch (err) {
+    console.error('deletePaciente error', err);
+    // Error de foreign key constraint
+    if (err.code === '23503') {
+      return res.status(409).json({ 
+        success: false, 
+        message: 'No se puede eliminar el paciente porque tiene registros asociados (citas, evaluaciones, etc.)' 
+      });
+    }
+    return res.status(500).json({ success: false, message: 'Error al eliminar paciente' });
+  }
+};
 

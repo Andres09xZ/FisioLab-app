@@ -6,6 +6,13 @@ export const runMigrations = async () => {
     // Add antecedentes and notas columns to pacientes table
     await query(`ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS antecedentes JSONB DEFAULT '[]'::jsonb`);
     await query(`ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS notas TEXT`);
+    
+    // Add profesion and tipo_trabajo to pacientes (moved from evaluaciones)
+    await query(`ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS profesion TEXT`);
+    await query(`ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS tipo_trabajo TEXT`);
+    
+    // Add actualizado_en column to pacientes for tracking updates
+    await query(`ALTER TABLE pacientes ADD COLUMN IF NOT EXISTS actualizado_en TIMESTAMPTZ DEFAULT NOW()`);
 
     // Ensure citas table and required columns exist
     await query(`
@@ -126,11 +133,8 @@ export const runMigrations = async () => {
         paciente_id UUID NOT NULL,
         fecha_evaluacion TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         
-        -- 1. Factores ocupacionales
-        profesion TEXT,
-        tipo_trabajo TEXT,
-        sedestacion_prolongada TEXT,
-        esfuerzo_fisico TEXT,
+        -- Escala EVA (Visual Analogue Scale) 0-10 para dolor
+        escala_eva INTEGER CHECK (escala_eva >= 0 AND escala_eva <= 10),
         
         -- 2. Motivo de la consulta
         motivo_consulta TEXT,
@@ -169,6 +173,24 @@ export const runMigrations = async () => {
           REFERENCES pacientes(id) ON DELETE CASCADE
       );
     `);
+    
+    // Add escala_eva column if the table already existed
+    await query(`ALTER TABLE evaluaciones_fisioterapeuticas ADD COLUMN IF NOT EXISTS escala_eva INTEGER CHECK (escala_eva >= 0 AND escala_eva <= 10)`);
+    
+    // Remove profesion and tipo_trabajo from evaluaciones (now in pacientes)
+    // These columns will be safely dropped if they exist
+    if (await checkColumn('evaluaciones_fisioterapeuticas', 'profesion')) {
+      try { await query(`ALTER TABLE evaluaciones_fisioterapeuticas DROP COLUMN profesion`); } catch (e) {}
+    }
+    if (await checkColumn('evaluaciones_fisioterapeuticas', 'tipo_trabajo')) {
+      try { await query(`ALTER TABLE evaluaciones_fisioterapeuticas DROP COLUMN tipo_trabajo`); } catch (e) {}
+    }
+    if (await checkColumn('evaluaciones_fisioterapeuticas', 'sedestacion_prolongada')) {
+      try { await query(`ALTER TABLE evaluaciones_fisioterapeuticas DROP COLUMN sedestacion_prolongada`); } catch (e) {}
+    }
+    if (await checkColumn('evaluaciones_fisioterapeuticas', 'esfuerzo_fisico')) {
+      try { await query(`ALTER TABLE evaluaciones_fisioterapeuticas DROP COLUMN esfuerzo_fisico`); } catch (e) {}
+    }
 
     // Create indexes for faster lookups (silently skip if already exist)
     try {
@@ -229,6 +251,23 @@ export const runMigrations = async () => {
       console.log('numero_sesion_total column might not exist or already nullable:', e.message);
     }
 
+    // Add plan_id to sesiones table to link sessions to treatment plans
+    try {
+      await query(`ALTER TABLE sesiones ADD COLUMN IF NOT EXISTS plan_id UUID`);
+      // Add foreign key constraint
+      if (!await checkConstraint('sesiones', 'fk_sesion_plan')) {
+        await query(`
+          ALTER TABLE sesiones 
+          ADD CONSTRAINT fk_sesion_plan 
+          FOREIGN KEY (plan_id) 
+          REFERENCES planes_tratamiento(id) 
+          ON DELETE SET NULL
+        `);
+      }
+    } catch (e) {
+      console.log('plan_id column or constraint already exists in sesiones:', e.message);
+    }
+
     // Add foreign key constraint for evaluacion_id
     if (!await checkConstraint('planes_tratamiento', 'fk_plan_evaluacion')) {
       try {
@@ -282,6 +321,7 @@ export const runMigrations = async () => {
     // Add missing columns to sesiones if table already existed with different structure
     try {
       await query(`ALTER TABLE sesiones ADD COLUMN IF NOT EXISTS plan_id UUID`);
+      await query(`ALTER TABLE sesiones ADD COLUMN IF NOT EXISTS cita_id UUID`);
       await query(`ALTER TABLE sesiones ADD COLUMN IF NOT EXISTS fecha_sesion TIMESTAMPTZ`);
       await query(`ALTER TABLE sesiones ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'programada'`);
       await query(`ALTER TABLE sesiones ADD COLUMN IF NOT EXISTS notas TEXT`);
@@ -296,6 +336,21 @@ export const runMigrations = async () => {
       await query(`ALTER TABLE sesiones ALTER COLUMN paciente_id DROP NOT NULL`);
     } catch (e) {
       console.log('paciente_id column might not exist or already nullable in sesiones:', e.message);
+    }
+
+    // Add foreign key constraint for cita_id in sesiones
+    if (!await checkConstraint('sesiones', 'fk_sesion_cita')) {
+      try {
+        await query(`
+          ALTER TABLE sesiones 
+          ADD CONSTRAINT fk_sesion_cita 
+          FOREIGN KEY (cita_id) 
+          REFERENCES citas(id) 
+          ON DELETE SET NULL
+        `);
+      } catch (e) {
+        console.log('Foreign key fk_sesion_cita already exists or error:', e.message);
+      }
     }
 
     // Add foreign key constraints for sesiones if not exist

@@ -23,12 +23,31 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
   const [motivoConsulta, setMotivoConsulta] = useState("")
   const [enfermedadActual, setEnfermedadActual] = useState("")
   const [objetivoPaciente, setObjetivoPaciente] = useState("")
+  const [escalaEVA, setEscalaEVA] = useState<number>(0)
   const [inspeccion, setInspeccion] = useState("")
   const [palpacion, setPalpacion] = useState("")
   const [movimiento, setMovimiento] = useState("")
   const [ejercicios, setEjercicios] = useState("")
   const [diagnosticoFT, setDiagnosticoFT] = useState("")
   const [planTratamiento, setPlanTratamiento] = useState("")
+
+  const getEVAColor = (value: number) => {
+    if (value === 0) return "bg-green-500"
+    if (value <= 2) return "bg-green-400"
+    if (value <= 4) return "bg-yellow-300"
+    if (value <= 6) return "bg-yellow-500"
+    if (value <= 8) return "bg-orange-500"
+    return "bg-red-500"
+  }
+
+  const getEVALabel = (value: number) => {
+    if (value === 0) return "Sin Dolor"
+    if (value <= 2) return "Poco Dolor"
+    if (value <= 4) return "Dolor Moderado"
+    if (value <= 6) return "Dolor Fuerte"
+    if (value <= 8) return "Dolor Muy Fuerte"
+    return "Dolor Extremo"
+  }
 
   const handleSubmit = async () => {
     if (!motivoConsulta || !enfermedadActual) {
@@ -53,6 +72,7 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
           motivo_consulta: motivoConsulta,
           enfermedad_actual: enfermedadActual,
           objetivo_paciente: objetivoPaciente,
+          escala_eva: escalaEVA,
           inspeccion,
           palpacion,
           movimiento,
@@ -91,6 +111,7 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
     setMotivoConsulta("")
     setEnfermedadActual("")
     setObjetivoPaciente("")
+    setEscalaEVA(0)
     setInspeccion("")
     setPalpacion("")
     setMovimiento("")
@@ -150,6 +171,107 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
               onChange={(e) => setObjetivoPaciente(e.target.value)}
               rows={2}
             />
+          </div>
+
+          {/* Escala EVA (Escala Visual Analógica) */}
+          <div className="space-y-4 p-6 bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+            <div className="text-center">
+              <h3 className="font-bold text-xl text-blue-900 mb-1">ESCALA VISUAL ANALÓGICA</h3>
+              <p className="text-sm text-gray-600">Seleccione el nivel de dolor del paciente</p>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Caras indicadoras */}
+              <div className="flex justify-between items-center px-2">
+                {[
+                  { range: [0, 0], emoji: "😊", label: "Sin\nDolor", color: "text-green-600" },
+                  { range: [1, 2], emoji: "🙂", label: "Poco\nDolor", color: "text-green-500" },
+                  { range: [3, 4], emoji: "😐", label: "Dolor\nModerado", color: "text-yellow-500" },
+                  { range: [5, 6], emoji: "😟", label: "Dolor\nFuerte", color: "text-orange-500" },
+                  { range: [7, 8], emoji: "😨", label: "Dolor\nMuy Fuerte", color: "text-orange-600" },
+                  { range: [9, 10], emoji: "😱", label: "Dolor\nExtremo", color: "text-red-600" },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex flex-col items-center">
+                    <span className={`text-3xl ${item.color}`}>{item.emoji}</span>
+                    <span className={`text-xs font-medium text-center whitespace-pre-line mt-1 ${item.color}`}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Barra de colores */}
+              <div className="relative h-12 rounded-lg overflow-hidden shadow-inner">
+                <div className="absolute inset-0 flex">
+                  <div className="flex-1 bg-green-500"></div>
+                  <div className="flex-1 bg-green-400"></div>
+                  <div className="flex-1 bg-yellow-300"></div>
+                  <div className="flex-1 bg-yellow-400"></div>
+                  <div className="flex-1 bg-yellow-500"></div>
+                  <div className="flex-1 bg-orange-400"></div>
+                  <div className="flex-1 bg-orange-500"></div>
+                  <div className="flex-1 bg-orange-600"></div>
+                  <div className="flex-1 bg-red-500"></div>
+                  <div className="flex-1 bg-red-600"></div>
+                  <div className="flex-1 bg-red-700"></div>
+                </div>
+                {/* Indicador de posición */}
+                <div 
+                  className="absolute top-0 bottom-0 w-1 bg-black transition-all duration-200"
+                  style={{ left: `${(escalaEVA / 10) * 100}%` }}
+                >
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-8 border-t-black"></div>
+                </div>
+              </div>
+
+              {/* Números */}
+              <div className="flex justify-between px-1">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setEscalaEVA(num)}
+                    className={`w-8 h-8 rounded-full font-bold text-sm transition-all ${
+                      escalaEVA === num
+                        ? "bg-blue-600 text-white scale-125 shadow-lg"
+                        : "bg-white text-gray-700 hover:bg-blue-100 border border-gray-300"
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+
+              {/* Slider */}
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  value={escalaEVA}
+                  onChange={(e) => setEscalaEVA(Number(e.target.value))}
+                  className="w-full h-3 rounded-lg eva-slider cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, 
+                      rgb(34, 197, 94) 0%, 
+                      rgb(74, 222, 128) 18%, 
+                      rgb(253, 224, 71) 36%, 
+                      rgb(250, 204, 21) 45%, 
+                      rgb(251, 191, 36) 54%, 
+                      rgb(251, 146, 60) 63%, 
+                      rgb(249, 115, 22) 72%, 
+                      rgb(234, 88, 12) 81%, 
+                      rgb(239, 68, 68) 90%, 
+                      rgb(220, 38, 38) 100%)`,
+                  }}
+                />
+                <div className="text-center">
+                  <span className={`inline-block px-6 py-2 rounded-full text-white font-bold text-lg ${getEVAColor(escalaEVA)}`}>
+                    {escalaEVA} - {getEVALabel(escalaEVA)}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Sección de Evaluación Física */}

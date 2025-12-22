@@ -8,7 +8,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Search, UserPlus, Eye, Edit, Trash2, FileText, ClipboardList, CheckCircle2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Search, UserPlus, Eye, Edit, Trash2, FileText, ClipboardList, CheckCircle2, Loader2 } from "lucide-react"
 import { NewPatientModal } from "@/components/dashboard/new-patient-modal"
 import { EvaluacionModal } from "@/components/dashboard/evaluacion-modal"
 import { ViewHistoriaClinicaModal } from "@/components/dashboard/view-historia-clinica-modal"
@@ -22,10 +49,16 @@ interface Paciente {
   documento: string
   celular: string
   email: string
+  direccion?: string
+  fecha_nacimiento?: string
   sexo: string
   edad: number
   emergencia_nombre: string
   emergencia_telefono: string
+  antecedentes?: string[]
+  notas?: string
+  profesion?: string
+  tipo_trabajo?: string
   activo: boolean
   has_historia: boolean
   historia_estado: string
@@ -44,6 +77,34 @@ export default function PacientesPage() {
   const [showViewHistoriaModal, setShowViewHistoriaModal] = useState(false)
   const [selectedPaciente, setSelectedPaciente] = useState<Paciente | null>(null)
   const [historiaClinicaData, setHistoriaClinicaData] = useState<any>(null)
+  
+  // Estados para editar paciente
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editForm, setEditForm] = useState({
+    nombres: "",
+    apellidos: "",
+    tipo_documento: "CC",
+    documento: "",
+    celular: "",
+    email: "",
+    direccion: "",
+    fecha_nacimiento: "",
+    sexo: "M",
+    edad: 0,
+    emergencia_nombre: "",
+    emergencia_telefono: "",
+    antecedentes: [] as string[],
+    notas: "",
+    profesion: "",
+    tipo_trabajo: "",
+    activo: true
+  })
+  const [isUpdating, setIsUpdating] = useState(false)
+  
+  // Estados para eliminar paciente
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [pacienteToDelete, setPacienteToDelete] = useState<Paciente | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -155,6 +216,124 @@ export default function PacientesPage() {
   const handleOpenEvaluacion = (paciente: Paciente) => {
     setSelectedPaciente(paciente)
     setShowEvaluacionModal(true)
+  }
+
+  // Funciones para editar paciente
+  const handleOpenEdit = (paciente: Paciente) => {
+    setSelectedPaciente(paciente)
+    setEditForm({
+      nombres: paciente.nombres || "",
+      apellidos: paciente.apellidos || "",
+      tipo_documento: paciente.tipo_documento || "CC",
+      documento: paciente.documento || "",
+      celular: paciente.celular || "",
+      email: paciente.email || "",
+      direccion: paciente.direccion || "",
+      fecha_nacimiento: paciente.fecha_nacimiento || "",
+      sexo: paciente.sexo || "M",
+      edad: paciente.edad || 0,
+      emergencia_nombre: paciente.emergencia_nombre || "",
+      emergencia_telefono: paciente.emergencia_telefono || "",
+      antecedentes: paciente.antecedentes || [],
+      notas: paciente.notas || "",
+      profesion: paciente.profesion || "",
+      tipo_trabajo: paciente.tipo_trabajo || "",
+      activo: paciente.activo ?? true
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdatePaciente = async () => {
+    if (!selectedPaciente) return
+    
+    if (!editForm.nombres.trim() || !editForm.apellidos.trim()) {
+      toast({
+        title: "Error",
+        description: "Nombres y apellidos son requeridos",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsUpdating(true)
+    try {
+      const response = await fetch(`http://localhost:3001/api/pacientes/${selectedPaciente.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
+        toast({
+          title: "¡Paciente actualizado!",
+          description: `${editForm.nombres} ${editForm.apellidos} ha sido actualizado correctamente`,
+        })
+        setShowEditModal(false)
+        setSelectedPaciente(null)
+        fetchPacientes() // Recargar lista
+      } else {
+        toast({
+          title: "Error",
+          description: result.message || result.error || "No se pudo actualizar el paciente",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error al actualizar paciente:", error)
+      toast({
+        title: "Error",
+        description: "Error de conexión al actualizar el paciente",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  // Funciones para eliminar paciente
+  const handleOpenDelete = (paciente: Paciente) => {
+    setPacienteToDelete(paciente)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeletePaciente = async () => {
+    if (!pacienteToDelete) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`http://localhost:3001/api/pacientes/${pacienteToDelete.id}`, {
+        method: 'DELETE'
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
+        toast({
+          title: "Paciente eliminado",
+          description: `${pacienteToDelete.nombres} ${pacienteToDelete.apellidos} ha sido eliminado`,
+        })
+        setShowDeleteDialog(false)
+        setPacienteToDelete(null)
+        fetchPacientes() // Recargar lista
+      } else {
+        toast({
+          title: "Error",
+          description: result.message || result.error || "No se pudo eliminar el paciente",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error al eliminar paciente:", error)
+      toast({
+        title: "Error",
+        description: "Error de conexión al eliminar el paciente",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   if (!user) return null
@@ -293,11 +472,21 @@ export default function PacientesPage() {
                             <Eye className="h-4 w-4 mr-1" />
                             Ver
                           </Button>
-                          <Button variant="outline" size="sm" className="hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200"
+                            onClick={() => handleOpenEdit(paciente)}
+                          >
                             <Edit className="h-4 w-4 mr-1" />
                             Editar
                           </Button>
-                          <Button variant="outline" size="sm" className="hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                            onClick={() => handleOpenDelete(paciente)}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -419,6 +608,272 @@ export default function PacientesPage() {
           />
         </>
       )}
+
+      {/* Modal de Editar Paciente */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Paciente</DialogTitle>
+            <DialogDescription>
+              Modifica los datos del paciente. Los campos con * son obligatorios.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-nombres">Nombres *</Label>
+                <Input
+                  id="edit-nombres"
+                  value={editForm.nombres}
+                  onChange={(e) => setEditForm({ ...editForm, nombres: e.target.value })}
+                  placeholder="Nombres del paciente"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-apellidos">Apellidos *</Label>
+                <Input
+                  id="edit-apellidos"
+                  value={editForm.apellidos}
+                  onChange={(e) => setEditForm({ ...editForm, apellidos: e.target.value })}
+                  placeholder="Apellidos del paciente"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-tipo-doc">Tipo Documento</Label>
+                <Select
+                  value={editForm.tipo_documento}
+                  onValueChange={(value) => setEditForm({ ...editForm, tipo_documento: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CC">CC - Cédula de Ciudadanía</SelectItem>
+                    <SelectItem value="TI">TI - Tarjeta de Identidad</SelectItem>
+                    <SelectItem value="CE">CE - Cédula de Extranjería</SelectItem>
+                    <SelectItem value="PP">PP - Pasaporte</SelectItem>
+                    <SelectItem value="DNI">DNI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-documento">Documento</Label>
+                <Input
+                  id="edit-documento"
+                  value={editForm.documento}
+                  onChange={(e) => setEditForm({ ...editForm, documento: e.target.value })}
+                  placeholder="Número de documento"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-edad">Edad</Label>
+                <Input
+                  id="edit-edad"
+                  type="number"
+                  value={editForm.edad}
+                  onChange={(e) => setEditForm({ ...editForm, edad: parseInt(e.target.value) || 0 })}
+                  placeholder="Edad"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-celular">Celular</Label>
+                <Input
+                  id="edit-celular"
+                  value={editForm.celular}
+                  onChange={(e) => setEditForm({ ...editForm, celular: e.target.value })}
+                  placeholder="Número de celular"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-sexo">Sexo</Label>
+                <Select
+                  value={editForm.sexo}
+                  onValueChange={(value) => setEditForm({ ...editForm, sexo: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sexo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="M">Masculino</SelectItem>
+                    <SelectItem value="F">Femenino</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-activo">Estado</Label>
+                <Select
+                  value={editForm.activo ? "true" : "false"}
+                  onValueChange={(value) => setEditForm({ ...editForm, activo: value === "true" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Activo</SelectItem>
+                    <SelectItem value="false">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-emergencia-nombre">Contacto de Emergencia</Label>
+                <Input
+                  id="edit-emergencia-nombre"
+                  value={editForm.emergencia_nombre}
+                  onChange={(e) => setEditForm({ ...editForm, emergencia_nombre: e.target.value })}
+                  placeholder="Nombre del contacto"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-emergencia-tel">Teléfono de Emergencia</Label>
+                <Input
+                  id="edit-emergencia-tel"
+                  value={editForm.emergencia_telefono}
+                  onChange={(e) => setEditForm({ ...editForm, emergencia_telefono: e.target.value })}
+                  placeholder="Teléfono del contacto"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-direccion">Dirección</Label>
+              <Input
+                id="edit-direccion"
+                value={editForm.direccion}
+                onChange={(e) => setEditForm({ ...editForm, direccion: e.target.value })}
+                placeholder="Dirección del paciente"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-fecha-nacimiento">Fecha de Nacimiento</Label>
+                <Input
+                  id="edit-fecha-nacimiento"
+                  type="date"
+                  value={editForm.fecha_nacimiento}
+                  onChange={(e) => setEditForm({ ...editForm, fecha_nacimiento: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-profesion">Profesión</Label>
+                <Input
+                  id="edit-profesion"
+                  value={editForm.profesion}
+                  onChange={(e) => setEditForm({ ...editForm, profesion: e.target.value })}
+                  placeholder="Profesión u ocupación"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-tipo-trabajo">Tipo de Trabajo</Label>
+              <Input
+                id="edit-tipo-trabajo"
+                value={editForm.tipo_trabajo}
+                onChange={(e) => setEditForm({ ...editForm, tipo_trabajo: e.target.value })}
+                placeholder="Ej: Turnos rotativos, oficina, trabajo físico"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-antecedentes">Antecedentes Médicos</Label>
+              <Input
+                id="edit-antecedentes"
+                value={editForm.antecedentes.join(", ")}
+                onChange={(e) => setEditForm({ 
+                  ...editForm, 
+                  antecedentes: e.target.value.split(",").map(a => a.trim()).filter(a => a) 
+                })}
+                placeholder="Ej: Diabetes, Hipertensión (separados por coma)"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-notas">Notas Adicionales</Label>
+              <Textarea
+                id="edit-notas"
+                value={editForm.notas}
+                onChange={(e) => setEditForm({ ...editForm, notas: e.target.value })}
+                placeholder="Notas adicionales del paciente"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUpdatePaciente} 
+              disabled={isUpdating}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {isUpdating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Cambios"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Confirmación para Eliminar */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar paciente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente el registro de{" "}
+              <strong>{pacienteToDelete?.nombres} {pacienteToDelete?.apellidos}</strong> y todos sus datos asociados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeletePaciente}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                "Eliminar"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardTopbar } from "@/components/dashboard/topbar"
 import { useToast } from "@/components/ui/use-toast"
+import { generarSesiones, obtenerSesionesPlan } from "@/lib/api/citas"
 import {
   ArrowLeft,
   User,
@@ -31,10 +32,142 @@ import {
   Clock,
   TrendingUp,
   FileText,
-  Zap
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Edit,
+  CalendarDays,
+  AlertCircle
 } from "lucide-react"
 
 const API_BASE = "http://localhost:3001/api"
+
+// Componente para la sección de sesiones
+function SesionesSection({ 
+  sesiones = [],
+  expanded, 
+  onToggle, 
+  onEditSesion, 
+  onCompletarSesion,
+  isCompletingMutation 
+}: { 
+  sesiones: Sesion[]
+  expanded: boolean
+  onToggle: () => void
+  onEditSesion: (sesion: Sesion) => void
+  onCompletarSesion: (sesionId: string) => void
+  isCompletingMutation: boolean
+}) {
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4" />
+          Sesiones de Tratamiento ({sesiones.length})
+        </span>
+        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-3">
+          {sesiones.length === 0 ? (
+            <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <AlertCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-600 mb-2">No hay sesiones programadas</p>
+              <p className="text-xs text-gray-500">
+                Usa el botón <span className="font-semibold">"Generar Sesiones"</span> arriba para crear sesiones automáticamente
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sesiones.map((sesion: Sesion) => {
+                // El backend puede usar fecha_sesion o fecha_programada
+                const fechaStr = sesion.fecha_sesion || sesion.fecha_programada || sesion.cita_inicio
+                const fechaValida = fechaStr && !isNaN(new Date(fechaStr).getTime())
+                
+                // Extraer hora de cita_inicio si no hay hora directa
+                let horaDisplay = sesion.hora
+                if (!horaDisplay && sesion.cita_inicio) {
+                  const citaDate = new Date(sesion.cita_inicio)
+                  horaDisplay = format(citaDate, 'HH:mm')
+                }
+                
+                const estadoColor = {
+                  pendiente: 'bg-amber-100 text-amber-800 border-amber-200',
+                  programada: 'bg-blue-100 text-blue-800 border-blue-200',
+                  completada: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                  cancelada: 'bg-gray-100 text-gray-800 border-gray-200'
+                }[sesion.estado] || 'bg-gray-100 text-gray-800'
+
+                return (
+                  <div
+                    key={sesion.id}
+                    className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          {fechaValida
+                            ? format(new Date(fechaStr), "EEEE d 'de' MMMM", { locale: es })
+                            : "Fecha no disponible"
+                          }
+                        </span>
+                        <Badge className={`text-xs ${estadoColor}`}>
+                          {sesion.estado}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-600">
+                        {horaDisplay && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {horaDisplay}
+                          </span>
+                        )}
+                        {sesion.profesional_nombre && (
+                          <span className="text-gray-500">• {sesion.profesional_nombre}</span>
+                        )}
+                        {sesion.notas && (
+                          <span className="text-gray-500">• {sesion.notas}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {(sesion.estado === 'pendiente' || sesion.estado === 'programada') && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onEditSesion(sesion)}
+                            className="h-8"
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => onCompletarSesion(sesion.id)}
+                            disabled={isCompletingMutation}
+                            className="h-8 bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Completar
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface Paciente {
   id: string
@@ -58,14 +191,31 @@ interface Evaluacion {
   tratamientos_anteriores?: string
 }
 
+interface Sesion {
+  id: string
+  plan_id?: string
+  fecha_programada?: string
+  fecha_sesion?: string // El backend usa fecha_sesion
+  hora?: string
+  estado: 'pendiente' | 'completada' | 'cancelada' | 'programada'
+  notas?: string
+  profesional_id?: string
+  profesional_nombre?: string
+  cita_id?: string
+  cita_inicio?: string
+  cita_fin?: string
+}
+
 interface Plan {
   id: string
   objetivo: string
   sesiones_plan: number
   sesiones_completadas: number
   estado: string
-  fecha_creacion: string
-  evaluacion_id: string
+  fecha_creacion?: string
+  evaluacion_id?: string
+  notas?: string
+  sesiones?: Sesion[] // Las sesiones vienen incluidas en el plan
 }
 
 export default function PacienteDetallePage() {
@@ -90,16 +240,14 @@ export default function PacienteDetallePage() {
     fecha_inicio: "",
     hora: "10:00",
     dias_semana: [1, 3, 5],
-    profesional_id: 1
+    duracion_minutos: 60,
+    profesional_id: "" // Se seleccionará del dropdown
   })
   const [evaluacionForm, setEvaluacionForm] = useState({
     fecha_evaluacion: new Date().toISOString().split('T')[0],
-    profesion: "",
-    tipo_trabajo: "",
-    sedestacion_prolongada: "",
-    esfuerzo_fisico: "",
     motivo_consulta: "",
     desde_cuando: "",
+    escala_eva: 0,
     asimetria: "",
     atrofias_musculares: "",
     inflamacion: "",
@@ -118,6 +266,20 @@ export default function PacienteDetallePage() {
     amplitud_movimientos: "",
     diagnostico: "",
     tratamientos_anteriores: ""
+  })
+  const [expandedPlans, setExpandedPlans] = useState<Record<string, boolean>>({})
+  const [showEditSesionModal, setShowEditSesionModal] = useState(false)
+  const [selectedSesion, setSelectedSesion] = useState<Sesion | null>(null)
+  const [editSesionForm, setEditSesionForm] = useState({
+    fecha_programada: "",
+    hora: ""
+  })
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false)
+  const [editPlanForm, setEditPlanForm] = useState({
+    id: "",
+    objetivo: "",
+    sesiones_plan: 10,
+    notas: ""
   })
 
   // Cargar usuario desde localStorage
@@ -177,6 +339,17 @@ export default function PacienteDetallePage() {
     retryDelay: 1000
   })
 
+  // Query para profesionales (para el modal de generar sesiones)
+  const { data: profesionales = [] } = useQuery({
+    queryKey: ['profesionales'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/profesionales`)
+      if (!res.ok) return []
+      const result = await res.json()
+      return result.data || result || []
+    }
+  })
+
   // Mutations
   const createEvaluacionMutation = useMutation({
     mutationFn: async (data: typeof evaluacionForm) => {
@@ -204,12 +377,9 @@ export default function PacienteDetallePage() {
       setShowEvaluacionModal(false)
       setEvaluacionForm({
         fecha_evaluacion: new Date().toISOString().split('T')[0],
-        profesion: "",
-        tipo_trabajo: "",
-        sedestacion_prolongada: "",
-        esfuerzo_fisico: "",
         motivo_consulta: "",
         desde_cuando: "",
+        escala_eva: 0,
         asimetria: "",
         atrofias_musculares: "",
         inflamacion: "",
@@ -288,32 +458,188 @@ export default function PacienteDetallePage() {
       if (!selectedPlan) {
         throw new Error("No se ha seleccionado un plan")
       }
-      const res = await fetch(`${API_BASE}/planes/${selectedPlan}/generar-sesiones`, {
+      
+      console.log("📤 Datos que se van a enviar:", {
+        fecha_inicio: data.fecha_inicio,
+        hora: data.hora,
+        dias_semana: data.dias_semana,
+        duracion_minutos: data.duracion_minutos,
+        profesional_id: data.profesional_id,
+        selectedPlan
+      })
+      
+      // Usar el helper de API
+      const result = await generarSesiones(selectedPlan, {
+        fecha_inicio: data.fecha_inicio,
+        hora: data.hora,
+        dias_semana: data.dias_semana,
+        duracion_minutos: data.duracion_minutos,
+        profesional_id: data.profesional_id
+      })
+
+      if (!result.success) {
+        throw new Error(result.error || "Error al generar sesiones")
+      }
+
+      return result.data
+    },
+    onSuccess: (data) => {
+      // Guardar el plan antes de resetearlo
+      const planIdToInvalidate = selectedPlan
+      
+      // Invalidar queries con el plan correcto
+      queryClient.invalidateQueries({ queryKey: ['planes', pacienteId] })
+      if (planIdToInvalidate) {
+        queryClient.invalidateQueries({ queryKey: ['sesiones', planIdToInvalidate] })
+      }
+      // También invalidar todas las sesiones por si acaso
+      queryClient.invalidateQueries({ queryKey: ['sesiones'] })
+      
+      setShowSesionesModal(false)
+      setSelectedPlan(null)
+
+      // Mostrar resumen de sesiones generadas
+      const { sesiones_creadas = 0, conflictos = [] } = data || {}
+      
+      if (conflictos.length > 0) {
+        toast({
+          title: `${sesiones_creadas} sesiones generadas`,
+          description: `⚠️ ${conflictos.length} conflictos detectados. Algunas sesiones pueden requerir ajuste manual.`,
+        })
+      } else {
+        toast({
+          title: "¡Sesiones generadas!",
+          description: `Se han programado ${sesiones_creadas} sesiones exitosamente`,
+        })
+      }
+    },
+    onError: (error: Error) => {
+      console.error("Error al generar sesiones:", error)
+      toast({
+        title: "Error al generar sesiones",
+        description: error.message || "Ocurrió un error desconocido",
+        variant: "destructive",
+      })
+    }
+  })
+
+  const editSesionMutation = useMutation({
+    mutationFn: async (data: { id: string; fecha_programada: string; hora: string }) => {
+      // Primero verificar overlap
+      const checkRes = await fetch(`${API_BASE}/agenda/check-overlap`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          fecha: data.fecha_programada,
+          hora: data.hora
+        })
+      })
+      const checkResult = await checkRes.json()
+      if (checkResult.data?.hasOverlap) {
+        throw new Error("Ya existe una cita en ese horario")
+      }
+
+      // Si no hay overlap, actualizar la sesión
+      const res = await fetch(`${API_BASE}/sesiones/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha_programada: data.fecha_programada,
+          hora: data.hora
+        })
       })
       if (!res.ok) {
         const error = await res.text()
         throw new Error(error || `Error HTTP: ${res.status}`)
       }
       const result = await res.json()
-      if (!result.success) throw new Error(result.message || "Error al generar sesiones")
+      if (!result.success) throw new Error(result.message || "Error al actualizar sesión")
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sesiones'] })
+      setShowEditSesionModal(false)
+      setSelectedSesion(null)
+      setEditSesionForm({ fecha_programada: "", hora: "" })
+      toast({
+        title: "¡Sesión actualizada!",
+        description: "La fecha de la sesión se ha actualizado correctamente",
+      })
+    },
+    onError: (error: Error) => {
+      console.error("Error al editar sesión:", error)
+      toast({
+        title: "Error al actualizar sesión",
+        description: error.message || "Ocurrió un error desconocido",
+        variant: "destructive",
+      })
+    }
+  })
+
+  const editPlanMutation = useMutation({
+    mutationFn: async (data: { id: string; objetivo: string; sesiones_plan: number; notas?: string }) => {
+      const res = await fetch(`${API_BASE}/planes/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          objetivo: data.objetivo,
+          sesiones_plan: data.sesiones_plan,
+          notas: data.notas || ""
+        })
+      })
+      if (!res.ok) {
+        const error = await res.text()
+        throw new Error(error || `Error HTTP: ${res.status}`)
+      }
+      const result = await res.json()
+      if (!result.success) throw new Error(result.message || "Error al actualizar plan")
       return result
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planes', pacienteId] })
-      setShowSesionesModal(false)
-      setSelectedPlan(null)
+      setShowEditPlanModal(false)
+      setEditPlanForm({ id: "", objetivo: "", sesiones_plan: 10, notas: "" })
       toast({
-        title: "¡Sesiones generadas!",
-        description: "Las sesiones se han programado exitosamente",
+        title: "¡Plan actualizado!",
+        description: "El plan de tratamiento se ha actualizado correctamente",
       })
     },
     onError: (error: Error) => {
-      console.error("Error al generar sesiones:", error)
+      console.error("Error al editar plan:", error)
       toast({
-        title: "Error al generar sesiones",
+        title: "Error al actualizar plan",
+        description: error.message || "Ocurrió un error desconocido",
+        variant: "destructive",
+      })
+    }
+  })
+
+  const completarSesionMutation = useMutation({
+    mutationFn: async (sesionId: string) => {
+      const res = await fetch(`${API_BASE}/sesiones/${sesionId}/completar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!res.ok) {
+        const error = await res.text()
+        throw new Error(error || `Error HTTP: ${res.status}`)
+      }
+      const result = await res.json()
+      if (!result.success) throw new Error(result.message || "Error al completar sesión")
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sesiones'] })
+      queryClient.invalidateQueries({ queryKey: ['planes', pacienteId] })
+      toast({
+        title: "¡Sesión completada!",
+        description: "La sesión se ha marcado como completada",
+      })
+    },
+    onError: (error: Error) => {
+      console.error("Error al completar sesión:", error)
+      toast({
+        title: "Error al completar sesión",
         description: error.message || "Ocurrió un error desconocido",
         variant: "destructive",
       })
@@ -328,6 +654,36 @@ export default function PacienteDetallePage() {
   const handleGenerarSesiones = (planId: string) => {
     setSelectedPlan(planId)
     setShowSesionesModal(true)
+  }
+
+  const handleEditPlan = (plan: Plan) => {
+    setEditPlanForm({
+      id: plan.id,
+      objetivo: plan.objetivo,
+      sesiones_plan: plan.sesiones_plan,
+      notas: ""
+    })
+    setShowEditPlanModal(true)
+  }
+
+  const handleSubmitEditPlan = () => {
+    if (!editPlanForm.objetivo.trim()) {
+      toast({
+        title: "Error",
+        description: "El objetivo es requerido",
+        variant: "destructive",
+      })
+      return
+    }
+    if (editPlanForm.sesiones_plan < 1) {
+      toast({
+        title: "Error",
+        description: "El número de sesiones debe ser al menos 1",
+        variant: "destructive",
+      })
+      return
+    }
+    editPlanMutation.mutate(editPlanForm)
   }
 
   const handleSubmitPlan = () => {
@@ -347,6 +703,22 @@ export default function PacienteDetallePage() {
       toast({
         title: "Error",
         description: "La fecha de inicio es requerida",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!sesionesForm.profesional_id) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un profesional",
+        variant: "destructive",
+      })
+      return
+    }
+    if (sesionesForm.dias_semana.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar al menos un día de la semana",
         variant: "destructive",
       })
       return
@@ -373,6 +745,49 @@ export default function PacienteDetallePage() {
         ? prev.dias_semana.filter(d => d !== dia)
         : [...prev.dias_semana, dia].sort()
     }))
+  }
+
+  const togglePlanExpanded = (planId: string) => {
+    setExpandedPlans(prev => ({
+      ...prev,
+      [planId]: !prev[planId]
+    }))
+  }
+
+  const handleEditSesion = (sesion: Sesion) => {
+    setSelectedSesion(sesion)
+    // El backend puede usar fecha_sesion o fecha_programada
+    const fechaStr = sesion.fecha_sesion || sesion.fecha_programada || sesion.cita_inicio
+    let horaStr = sesion.hora
+    if (!horaStr && sesion.cita_inicio) {
+      horaStr = format(new Date(sesion.cita_inicio), 'HH:mm')
+    }
+    setEditSesionForm({
+      fecha_programada: fechaStr ? fechaStr.split('T')[0] : "",
+      hora: horaStr || ""
+    })
+    setShowEditSesionModal(true)
+  }
+
+  const handleSubmitEditSesion = () => {
+    if (!selectedSesion) return
+    if (!editSesionForm.fecha_programada || !editSesionForm.hora) {
+      toast({
+        title: "Error",
+        description: "La fecha y hora son requeridas",
+        variant: "destructive",
+      })
+      return
+    }
+    editSesionMutation.mutate({
+      id: selectedSesion.id,
+      fecha_programada: editSesionForm.fecha_programada,
+      hora: editSesionForm.hora
+    })
+  }
+
+  const handleCompletarSesion = (sesionId: string) => {
+    completarSesionMutation.mutate(sesionId)
   }
 
   const getInitials = (nombres: string, apellidos: string) => {
@@ -452,18 +867,18 @@ export default function PacienteDetallePage() {
             </Button>
 
             {/* Header - Información del Paciente */}
-            <Card className="border-t-4 border-t-emerald-500">
+            <Card className="border-t-4 border-t-[#04D9D9]">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-6">
                   {/* Avatar Grande */}
                   <div className="relative">
-                    <div className="h-24 w-24 rounded-full bg-linear-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg">
+                    <div className="h-24 w-24 rounded-full bg-linear-to-br from-[#D466F2] to-[#056CF2] flex items-center justify-center shadow-lg">
                       <span className="text-white font-bold text-3xl">
                         {getInitials(paciente.nombres, paciente.apellidos)}
                       </span>
                     </div>
                     {paciente.activo && (
-                      <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1.5">
+                      <div className="absolute -bottom-1 -right-1 bg-[#0AA640] rounded-full p-1.5">
                         <CheckCircle2 className="h-4 w-4 text-white" />
                       </div>
                     )}
@@ -485,7 +900,7 @@ export default function PacienteDetallePage() {
                             <Calendar className="h-4 w-4" />
                             {paciente.edad} años
                           </span>
-                          <Badge className={paciente.activo ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                          <Badge className={paciente.activo ? "bg-[#E6FFF5] text-[#0AA640] border-[#0AA640]" : "bg-gray-100 text-gray-800"}>
                             {paciente.activo ? "Activo" : "Inactivo"}
                           </Badge>
                         </div>
@@ -516,21 +931,21 @@ export default function PacienteDetallePage() {
 
                   {/* Stats Cards */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Card className="bg-blue-50 border-blue-200">
+                    <Card className="bg-[#EBF5FF] border-[#4BA4F2]">
                       <CardContent className="pt-4 pb-3">
                         <div className="text-center">
-                          <ClipboardList className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                          <p className="text-2xl font-bold text-blue-900">{evaluaciones.length}</p>
-                          <p className="text-xs text-blue-700">Evaluaciones</p>
+                          <ClipboardList className="h-6 w-6 text-[#056CF2] mx-auto mb-1" />
+                          <p className="text-2xl font-bold text-[#056CF2]">{evaluaciones.length}</p>
+                          <p className="text-xs text-[#4BA4F2]">Evaluaciones</p>
                         </div>
                       </CardContent>
                     </Card>
-                    <Card className="bg-emerald-50 border-emerald-200">
+                    <Card className="bg-[#E6FFF5] border-[#0AA640]">
                       <CardContent className="pt-4 pb-3">
                         <div className="text-center">
-                          <Target className="h-6 w-6 text-emerald-600 mx-auto mb-1" />
-                          <p className="text-2xl font-bold text-emerald-900">{planesActivos.length}</p>
-                          <p className="text-xs text-emerald-700">Planes Activos</p>
+                          <Target className="h-6 w-6 text-[#0AA640] mx-auto mb-1" />
+                          <p className="text-2xl font-bold text-[#0AA640]">{planesActivos.length}</p>
+                          <p className="text-xs text-[#0AA640]/70">Planes Activos</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -543,12 +958,12 @@ export default function PacienteDetallePage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <ClipboardList className="h-5 w-5 text-blue-600" />
+                  <ClipboardList className="h-5 w-5 text-[#056CF2]" />
                   Evaluaciones Fisioterapéuticas
                 </CardTitle>
                 <Button
                   onClick={() => setShowEvaluacionModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-[#056CF2] hover:bg-[#0558C9]"
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Nueva Evaluación
@@ -563,14 +978,7 @@ export default function PacienteDetallePage() {
                 ) : evaluaciones.length === 0 ? (
                   <div className="text-center py-12">
                     <ClipboardList className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600 mb-4">No hay evaluaciones registradas</p>
-                    <Button 
-                      onClick={() => setShowEvaluacionModal(true)}
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nueva evaluación
-                    </Button>
+                    <p className="text-gray-600">No hay evaluaciones registradas</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -590,7 +998,7 @@ export default function PacienteDetallePage() {
                                     }
                                   </Badge>
                                   {tienePlan && (
-                                    <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+                                    <Badge className="bg-[#E6FFF5] text-[#0AA640] border-[#0AA640]/30 text-xs">
                                       <CheckCircle2 className="h-3 w-3 mr-1" />
                                       Plan creado
                                     </Badge>
@@ -610,7 +1018,7 @@ export default function PacienteDetallePage() {
                                 <Button
                                   onClick={() => handleCrearPlan(evaluacion.id)}
                                   size="sm"
-                                  className="bg-blue-600 hover:bg-blue-700"
+                                  className="bg-[#056CF2] hover:bg-[#0558C9]"
                                 >
                                   <Plus className="h-4 w-4 mr-1" />
                                   Crear Plan
@@ -630,7 +1038,7 @@ export default function PacienteDetallePage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-emerald-600" />
+                  <Target className="h-5 w-5 text-[#04D9D9]" />
                   Planes de Tratamiento
                 </CardTitle>
               </CardHeader>
@@ -655,7 +1063,7 @@ export default function PacienteDetallePage() {
                       const fechaCreacionValida = plan.fecha_creacion && !isNaN(new Date(plan.fecha_creacion).getTime())
                       
                       return (
-                        <Card key={plan.id} className={`border-l-4 ${plan.estado === 'activo' ? 'border-l-emerald-500' : 'border-l-gray-400'}`}>
+                        <Card key={plan.id} className={`border-l-4 ${plan.estado === 'activo' ? 'border-l-[#0AA640]' : 'border-l-gray-400'}`}>
                           <CardContent className="pt-5">
                             <div className="space-y-4">
                               {/* Header */}
@@ -663,16 +1071,26 @@ export default function PacienteDetallePage() {
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-2">
                                     <h4 className="font-semibold text-gray-900">{plan.objetivo}</h4>
-                                    <Badge className={plan.estado === 'activo' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}>
+                                    <Badge className={plan.estado === 'activo' ? 'bg-[#E6FFF5] text-[#0AA640]' : 'bg-gray-100 text-gray-800'}>
                                       {plan.estado === 'activo' ? 'Activo' : 'Finalizado'}
                                     </Badge>
                                   </div>
-                                  {fechaCreacionValida && (
+                                  {fechaCreacionValida && plan.fecha_creacion && (
                                     <p className="text-xs text-gray-600">
                                       Creado el {format(new Date(plan.fecha_creacion), "d 'de' MMMM, yyyy", { locale: es })}
                                     </p>
                                   )}
                                 </div>
+                                {/* Botón Editar Plan */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditPlan(plan)}
+                                  className="text-[#056CF2] border-[#056CF2] hover:bg-[#056CF2]/10"
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Editar
+                                </Button>
                               </div>
 
                               {/* Progress Bar */}
@@ -681,14 +1099,14 @@ export default function PacienteDetallePage() {
                                   <span className="text-gray-600">
                                     Progreso: {sesionesCompletadas} de {sesionesTotal} sesiones
                                   </span>
-                                  <span className="font-semibold text-emerald-600">
+                                  <span className="font-semibold text-[#0AA640]">
                                     {Math.round(progresoPlan)}%
                                   </span>
                                 </div>
                                 <Progress value={progresoPlan} className="h-3" />
                                 <div className="flex items-center justify-between text-xs text-gray-600">
                                   <span className="flex items-center gap-1">
-                                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                    <CheckCircle2 className="h-3 w-3 text-[#0AA640]" />
                                     {sesionesCompletadas} completadas
                                   </span>
                                   <span className="flex items-center gap-1">
@@ -703,7 +1121,7 @@ export default function PacienteDetallePage() {
                                 <div className="flex gap-2 pt-2">
                                   <Button
                                     onClick={() => handleGenerarSesiones(plan.id)}
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                                    className="flex-1 bg-[#0AA640] hover:bg-[#089536]"
                                     size="lg"
                                   >
                                     <Zap className="h-4 w-4 mr-2" />
@@ -713,12 +1131,23 @@ export default function PacienteDetallePage() {
                               )}
 
                               {progresoPlan === 100 && (
-                                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
-                                  <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
-                                  <p className="text-sm font-medium text-emerald-900">¡Plan completado!</p>
-                                  <p className="text-xs text-emerald-700">Todas las sesiones han sido finalizadas</p>
+                                <div className="bg-[#E6FFF5] border border-[#0AA640]/30 rounded-lg p-3 text-center">
+                                  <CheckCircle2 className="h-8 w-8 text-[#0AA640] mx-auto mb-2" />
+                                  <p className="text-sm font-medium text-[#0AA640]">¡Plan completado!</p>
+                                  <p className="text-xs text-[#0AA640]/70">Todas las sesiones han sido finalizadas</p>
                                 </div>
                               )}
+
+                              {/* Sección de Sesiones Collapsible */}
+                              <Separator className="my-4" />
+                              <SesionesSection 
+                                sesiones={plan.sesiones || []}
+                                expanded={expandedPlans[plan.id] || false}
+                                onToggle={() => togglePlanExpanded(plan.id)}
+                                onEditSesion={handleEditSesion}
+                                onCompletarSesion={handleCompletarSesion}
+                                isCompletingMutation={completarSesionMutation.isPending}
+                              />
                             </div>
                           </CardContent>
                         </Card>
@@ -785,9 +1214,79 @@ export default function PacienteDetallePage() {
             <Button 
               onClick={handleSubmitPlan}
               disabled={createPlanMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-[#056CF2] hover:bg-[#0558C9]"
             >
               {createPlanMutation.isPending ? "Creando..." : "Crear Plan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar Plan */}
+      <Dialog open={showEditPlanModal} onOpenChange={setShowEditPlanModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Plan de Tratamiento</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="edit_objetivo">Objetivo del Plan *</Label>
+              <Textarea
+                id="edit_objetivo"
+                placeholder="Ej: Recuperación completa de rodilla derecha - Esguince LCM grado II"
+                value={editPlanForm.objetivo}
+                onChange={(e) => setEditPlanForm({ ...editPlanForm, objetivo: e.target.value })}
+                className="mt-1.5"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit_sesiones">Número de Sesiones *</Label>
+              <Input
+                id="edit_sesiones"
+                type="number"
+                min="1"
+                max="100"
+                value={editPlanForm.sesiones_plan}
+                onChange={(e) => setEditPlanForm({ ...editPlanForm, sesiones_plan: parseInt(e.target.value) || 1 })}
+                className="mt-1.5"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Puedes aumentar o reducir el número de sesiones del plan
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="edit_notas">Notas (opcional)</Label>
+              <Textarea
+                id="edit_notas"
+                placeholder="Información adicional sobre el plan..."
+                value={editPlanForm.notas}
+                onChange={(e) => setEditPlanForm({ ...editPlanForm, notas: e.target.value })}
+                className="mt-1.5"
+                rows={2}
+              />
+            </div>
+
+            <div className="bg-[#FFF7E6] border border-amber-200 rounded-lg p-3">
+              <p className="text-xs text-amber-800">
+                <strong>Nota:</strong> Si reduces el número de sesiones, las sesiones no generadas serán eliminadas automáticamente. Las sesiones ya completadas no se verán afectadas.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditPlanModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSubmitEditPlan}
+              disabled={editPlanMutation.isPending}
+              className="bg-[#056CF2] hover:bg-[#0558C9]"
+            >
+              {editPlanMutation.isPending ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -826,6 +1325,39 @@ export default function PacienteDetallePage() {
             </div>
 
             <div>
+              <Label htmlFor="duracion_minutos">Duración (minutos) *</Label>
+              <Input
+                id="duracion_minutos"
+                type="number"
+                min="15"
+                max="240"
+                step="15"
+                value={sesionesForm.duracion_minutos}
+                onChange={(e) => setSesionesForm({ ...sesionesForm, duracion_minutos: parseInt(e.target.value) || 60 })}
+                className="mt-1.5"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="profesional">Profesional *</Label>
+              <Select
+                value={sesionesForm.profesional_id}
+                onValueChange={(value) => setSesionesForm({ ...sesionesForm, profesional_id: value })}
+              >
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Selecciona un profesional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {profesionales.map((prof: any) => (
+                    <SelectItem key={prof.id} value={prof.id}>
+                      {prof.nombre} {prof.apellido || ''} {prof.especialidad ? `- ${prof.especialidad}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label className="mb-3 block">Días de la Semana *</Label>
               <div className="grid grid-cols-4 gap-2">
                 {[
@@ -843,7 +1375,7 @@ export default function PacienteDetallePage() {
                     className={`
                       cursor-pointer rounded-lg border-2 p-3 text-center text-sm font-medium transition-colors
                       ${sesionesForm.dias_semana.includes(dia.value)
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                        ? 'border-[#0AA640] bg-[#E6FFF5] text-[#0AA640]'
                         : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                       }
                     `}
@@ -854,8 +1386,8 @@ export default function PacienteDetallePage() {
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-xs text-blue-800">
+            <div className="bg-[#E6F3FF] border border-[#056CF2]/30 rounded-lg p-3">
+              <p className="text-xs text-[#056CF2]">
                 <strong>Nota:</strong> Las sesiones se crearán automáticamente en los días seleccionados hasta completar el plan.
               </p>
             </div>
@@ -868,7 +1400,7 @@ export default function PacienteDetallePage() {
             <Button 
               onClick={handleSubmitSesiones}
               disabled={generarSesionesMutation.isPending}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-[#0AA640] hover:bg-[#089536]"
             >
               {generarSesionesMutation.isPending ? "Generando..." : "Generar Sesiones"}
             </Button>
@@ -884,10 +1416,10 @@ export default function PacienteDetallePage() {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
-            {/* Información Laboral */}
+            {/* Motivo de Consulta */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900">Información Laboral</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <h3 className="font-semibold text-gray-900">Motivo de Consulta</h3>
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="fecha_evaluacion">Fecha de Evaluación *</Label>
                   <Input
@@ -898,60 +1430,8 @@ export default function PacienteDetallePage() {
                     className="mt-1.5"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="profesion">Profesión</Label>
-                  <Input
-                    id="profesion"
-                    value={evaluacionForm.profesion}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, profesion: e.target.value })}
-                    placeholder="Ej: Enfermera"
-                    className="mt-1.5"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="tipo_trabajo">Tipo de Trabajo</Label>
-                  <Input
-                    id="tipo_trabajo"
-                    value={evaluacionForm.tipo_trabajo}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, tipo_trabajo: e.target.value })}
-                    placeholder="Ej: Turnos rotativos"
-                    className="mt-1.5"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="sedestacion_prolongada">Sedestación Prolongada</Label>
-                  <Input
-                    id="sedestacion_prolongada"
-                    value={evaluacionForm.sedestacion_prolongada}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, sedestacion_prolongada: e.target.value })}
-                    placeholder="Ej: Sí, 8 horas"
-                    className="mt-1.5"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="esfuerzo_fisico">Esfuerzo Físico</Label>
-                  <Select
-                    value={evaluacionForm.esfuerzo_fisico || ""}
-                    onValueChange={(value) => setEvaluacionForm({ ...evaluacionForm, esfuerzo_fisico: value })}
-                  >
-                    <SelectTrigger className="mt-1.5 w-full">
-                      <SelectValue placeholder="Seleccionar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Bajo">Bajo</SelectItem>
-                      <SelectItem value="Medio">Medio</SelectItem>
-                      <SelectItem value="Alto">Alto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
-            </div>
-
-            <Separator />
-
-            {/* Motivo de Consulta */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900">Motivo de Consulta</h3>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Label htmlFor="motivo_consulta">Motivo de Consulta *</Label>
@@ -983,6 +1463,123 @@ export default function PacienteDetallePage() {
                     placeholder="Ej: 7/10"
                     className="mt-1.5"
                   />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Escala EVA (Escala Visual Analógica) */}
+            <div className="space-y-4 p-6 bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+              <div className="text-center">
+                <h3 className="font-bold text-xl text-blue-900 mb-1">ESCALA VISUAL ANALÓGICA</h3>
+                <p className="text-sm text-gray-600">Seleccione el nivel de dolor del paciente</p>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Caras indicadoras */}
+                <div className="flex justify-between items-center px-2">
+                  {[
+                    { range: [0, 0], emoji: "😊", label: "Sin\nDolor", color: "text-green-600" },
+                    { range: [1, 2], emoji: "🙂", label: "Poco\nDolor", color: "text-green-500" },
+                    { range: [3, 4], emoji: "😐", label: "Dolor\nModerado", color: "text-yellow-500" },
+                    { range: [5, 6], emoji: "😟", label: "Dolor\nFuerte", color: "text-orange-500" },
+                    { range: [7, 8], emoji: "😨", label: "Dolor\nMuy Fuerte", color: "text-orange-600" },
+                    { range: [9, 10], emoji: "😱", label: "Dolor\nExtremo", color: "text-red-600" },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex flex-col items-center">
+                      <span className={`text-3xl ${item.color}`}>{item.emoji}</span>
+                      <span className={`text-xs font-medium text-center whitespace-pre-line mt-1 ${item.color}`}>
+                        {item.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Barra de colores */}
+                <div className="relative h-12 rounded-lg overflow-hidden shadow-inner">
+                  <div className="absolute inset-0 flex">
+                    <div className="flex-1 bg-green-500"></div>
+                    <div className="flex-1 bg-green-400"></div>
+                    <div className="flex-1 bg-yellow-300"></div>
+                    <div className="flex-1 bg-yellow-400"></div>
+                    <div className="flex-1 bg-yellow-500"></div>
+                    <div className="flex-1 bg-orange-400"></div>
+                    <div className="flex-1 bg-orange-500"></div>
+                    <div className="flex-1 bg-orange-600"></div>
+                    <div className="flex-1 bg-red-500"></div>
+                    <div className="flex-1 bg-red-600"></div>
+                    <div className="flex-1 bg-red-700"></div>
+                  </div>
+                  {/* Indicador de posición */}
+                  <div 
+                    className="absolute top-0 bottom-0 w-1 bg-black transition-all duration-200"
+                    style={{ left: `${(evaluacionForm.escala_eva / 10) * 100}%` }}
+                  >
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-8 border-t-black"></div>
+                  </div>
+                </div>
+
+                {/* Números */}
+                <div className="flex justify-between px-1">
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setEvaluacionForm({ ...evaluacionForm, escala_eva: num })}
+                      className={`w-8 h-8 rounded-full font-bold text-sm transition-all ${
+                        evaluacionForm.escala_eva === num
+                          ? "bg-blue-600 text-white scale-125 shadow-lg"
+                          : "bg-white text-gray-700 hover:bg-blue-100 border border-gray-300"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Slider */}
+                <div className="space-y-2">
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value={evaluacionForm.escala_eva}
+                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, escala_eva: Number(e.target.value) })}
+                    className="w-full h-3 rounded-lg eva-slider cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, 
+                        rgb(34, 197, 94) 0%, 
+                        rgb(74, 222, 128) 18%, 
+                        rgb(253, 224, 71) 36%, 
+                        rgb(250, 204, 21) 45%, 
+                        rgb(251, 191, 36) 54%, 
+                        rgb(251, 146, 60) 63%, 
+                        rgb(249, 115, 22) 72%, 
+                        rgb(234, 88, 12) 81%, 
+                        rgb(239, 68, 68) 90%, 
+                        rgb(220, 38, 38) 100%)`,
+                    }}
+                  />
+                  <div className="text-center">
+                    <span className={`inline-block px-6 py-2 rounded-full text-white font-bold text-lg ${
+                      evaluacionForm.escala_eva === 0 ? "bg-green-500" :
+                      evaluacionForm.escala_eva <= 2 ? "bg-green-400" :
+                      evaluacionForm.escala_eva <= 4 ? "bg-yellow-300 text-gray-800" :
+                      evaluacionForm.escala_eva <= 6 ? "bg-yellow-500" :
+                      evaluacionForm.escala_eva <= 8 ? "bg-orange-500" :
+                      "bg-red-500"
+                    }`}>
+                      {evaluacionForm.escala_eva} - {
+                        evaluacionForm.escala_eva === 0 ? "Sin Dolor" :
+                        evaluacionForm.escala_eva <= 2 ? "Poco Dolor" :
+                        evaluacionForm.escala_eva <= 4 ? "Dolor Moderado" :
+                        evaluacionForm.escala_eva <= 6 ? "Dolor Fuerte" :
+                        evaluacionForm.escala_eva <= 8 ? "Dolor Muy Fuerte" :
+                        "Dolor Extremo"
+                      }
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1169,6 +1766,84 @@ export default function PacienteDetallePage() {
               className="bg-blue-600 hover:bg-blue-700"
             >
               {createEvaluacionMutation.isPending ? "Creando..." : "Crear Evaluación"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar Sesión */}
+      <Dialog open={showEditSesionModal} onOpenChange={setShowEditSesionModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Fecha de Sesión</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div className="text-sm text-blue-900">
+                  <p className="font-medium mb-1">Validación automática</p>
+                  <p className="text-xs text-blue-700">
+                    Se verificará que no haya otra cita en el horario seleccionado
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit_fecha">Nueva Fecha *</Label>
+                <Input
+                  id="edit_fecha"
+                  type="date"
+                  value={editSesionForm.fecha_programada}
+                  onChange={(e) => setEditSesionForm({ ...editSesionForm, fecha_programada: e.target.value })}
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit_hora">Nueva Hora *</Label>
+                <Input
+                  id="edit_hora"
+                  type="time"
+                  value={editSesionForm.hora}
+                  onChange={(e) => setEditSesionForm({ ...editSesionForm, hora: e.target.value })}
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            {selectedSesion && (
+              <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                <p className="text-gray-600 mb-1">Fecha actual:</p>
+                <p className="font-medium text-gray-900">
+                  {selectedSesion.fecha_programada && !isNaN(new Date(selectedSesion.fecha_programada).getTime())
+                    ? format(new Date(selectedSesion.fecha_programada), "EEEE d 'de' MMMM, yyyy", { locale: es })
+                    : "Fecha no disponible"
+                  } a las {selectedSesion.hora}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowEditSesionModal(false)
+                setSelectedSesion(null)
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSubmitEditSesion}
+              disabled={editSesionMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {editSesionMutation.isPending ? "Actualizando..." : "Guardar Cambios"}
             </Button>
           </DialogFooter>
         </DialogContent>
