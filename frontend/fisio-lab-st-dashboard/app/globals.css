@@ -203,10 +203,29 @@ input[type="range"].eva-slider::-moz-range-thumb:hover {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
+  overflow: hidden;
 }
 
 .fullcalendar-wrapper .fc-event:hover {
   opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fullcalendar-wrapper .fc-event .fc-event-main {
+  overflow: hidden;
+}
+
+.fullcalendar-wrapper .fc-event-title {
+  white-space: normal !important;
+  line-height: 1.2;
+}
+
+.fullcalendar-wrapper .fc-timegrid-event {
+  min-height: 60px !important;
+}
+
+.fullcalendar-wrapper .fc-timegrid-event-short {
+  min-height: 40px !important;
 }
 
 .fullcalendar-wrapper .fc-timegrid-slot {

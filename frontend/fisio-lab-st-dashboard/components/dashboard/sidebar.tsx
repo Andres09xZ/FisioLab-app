@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, Calendar, Users, ClipboardList, BarChart3, DollarSign, Settings, Stethoscope } from "lucide-react"
+import { Home, Calendar, Users, ClipboardList, BarChart3, DollarSign, Settings, Stethoscope, BookOpen } from "lucide-react"
 import Image from "next/image"
 
 const menuItems = [
@@ -12,6 +12,7 @@ const menuItems = [
   { icon: Users, label: "Pacientes", badge: 8, href: "/pacientes" },
   { icon: ClipboardList, label: "Sesiones", href: "/sesiones" },
   { icon: Stethoscope, label: "Profesionales", href: "/profesionales" },
+  { icon: BookOpen, label: "Biblioteca", href: "/biblioteca" },
   { icon: BarChart3, label: "Reportes", href: "/reportes" },
   { icon: DollarSign, label: "Finanzas", href: "/finanzas" },
   { icon: Settings, label: "Configuración", href: "/configuracion" },

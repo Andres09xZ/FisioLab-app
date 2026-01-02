@@ -240,3 +240,175 @@ export const registrarEvaluacion = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error al registrar evaluación' });
   }
 };
+
+// Validar disponibilidad de horario
+export const validarHorario = async (req, res) => {
+  try {
+    const { profesional_id, fecha_inicio, fecha_fin, excluir_cita_id } = req.body;
+
+    if (!profesional_id || !fecha_inicio || !fecha_fin) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'profesional_id, fecha_inicio y fecha_fin son requeridos' 
+      });
+    }
+
+    // Verificar solapamiento con citas existentes
+    let sql = `
+      SELECT id, paciente_id, inicio, fin, titulo, estado
+      FROM citas
+      WHERE profesional_id = $1
+        AND estado NOT IN ('cancelada', 'no_asistio')
+        AND (inicio < $3 AND fin > $2)
+    `;
+    const params = [profesional_id, fecha_inicio, fecha_fin];
+
+    // Opcionalmente excluir una cita (para edición)
+    if (excluir_cita_id) {
+      sql += ` AND id != $4`;
+      params.push(excluir_cita_id);
+    }
+
+    const { rows } = await query(sql, params);
+
+    if (rows.length > 0) {
+      return res.json({ 
+        success: true, 
+        disponible: false,
+        conflictos: rows,
+        message: 'El horario se solapa con citas existentes'
+      });
+    }
+
+    return res.json({ 
+      success: true, 
+      disponible: true,
+      message: 'El horario está disponible'
+    });
+  } catch (err) {
+    console.error('validarHorario error', err);
+    return res.status(500).json({ success: false, message: 'Error al validar horario' });
+  }
+};
+
+// Obtener horarios disponibles de un profesional en una fecha
+export const getHorariosDisponibles = async (req, res) => {
+  try {
+    const { profesional_id, fecha, duracion_minutos } = req.query;
+
+    if (!profesional_id || !fecha) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'profesional_id y fecha son requeridos' 
+      });
+    }
+
+    const duracion = parseInt(duracion_minutos) || 45;
+
+    // Configuración de horario laboral (8:00 - 20:00)
+    const horaInicio = 8;
+    const horaFin = 20;
+    const intervalo = 30; // Cada 30 minutos
+
+    // Obtener citas del profesional para ese día
+    const { rows: citasDelDia } = await query(
+      `SELECT inicio, fin 
+       FROM citas 
+       WHERE profesional_id = $1 
+         AND DATE(inicio) = $2
+         AND estado NOT IN ('cancelada', 'no_asistio')
+       ORDER BY inicio`,
+      [profesional_id, fecha]
+    );
+
+    // Generar slots disponibles
+    const horariosDisponibles = [];
+    const fechaBase = new Date(fecha);
+
+    for (let hora = horaInicio; hora < horaFin; hora++) {
+      for (let min = 0; min < 60; min += intervalo) {
+        const slotInicio = new Date(fechaBase);
+        slotInicio.setHours(hora, min, 0, 0);
+        
+        const slotFin = new Date(slotInicio);
+        slotFin.setMinutes(slotFin.getMinutes() + duracion);
+
+        // No permitir slots que terminen después del horario laboral
+        if (slotFin.getHours() > horaFin || (slotFin.getHours() === horaFin && slotFin.getMinutes() > 0)) {
+          continue;
+        }
+
+        // Verificar si el slot está disponible (no se solapa con ninguna cita)
+        const disponible = !citasDelDia.some(cita => {
+          const citaInicio = new Date(cita.inicio);
+          const citaFin = new Date(cita.fin);
+          return slotInicio < citaFin && slotFin > citaInicio;
+        });
+
+        if (disponible) {
+          horariosDisponibles.push({
+            inicio: slotInicio.toISOString(),
+            fin: slotFin.toISOString(),
+            hora: `${String(hora).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+          });
+        }
+      }
+    }
+
+    return res.json({ 
+      success: true, 
+      data: horariosDisponibles,
+      fecha,
+      profesional_id,
+      duracion_minutos: duracion,
+      total_slots: horariosDisponibles.length
+    });
+  } catch (err) {
+    console.error('getHorariosDisponibles error', err);
+    return res.status(500).json({ success: false, message: 'Error al obtener horarios disponibles' });
+  }
+};
+
+// Agregar notas a una sesión
+export const agregarNotas = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notas, append } = req.body;
+
+    if (!notas) {
+      return res.status(400).json({ success: false, message: 'notas es requerido' });
+    }
+
+    // Verificar que la sesión existe
+    const sesionResult = await query('SELECT id, notas FROM sesiones WHERE id = $1', [id]);
+    
+    if (sesionResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Sesión no encontrada' });
+    }
+
+    let notasFinales = notas;
+
+    // Si append es true, agregar a las notas existentes
+    if (append && sesionResult.rows[0].notas) {
+      const timestamp = new Date().toISOString().split('T')[0];
+      notasFinales = `${sesionResult.rows[0].notas}\n\n[${timestamp}] ${notas}`;
+    }
+
+    const { rows } = await query(
+      `UPDATE sesiones 
+       SET notas = $2, actualizado_en = NOW()
+       WHERE id = $1
+       RETURNING id, plan_id, cita_id, paciente_id, profesional_id, fecha_sesion, estado, notas`,
+      [id, notasFinales]
+    );
+
+    return res.json({ 
+      success: true, 
+      data: rows[0],
+      message: append ? 'Notas agregadas exitosamente' : 'Notas actualizadas exitosamente'
+    });
+  } catch (err) {
+    console.error('agregarNotas error', err);
+    return res.status(500).json({ success: false, message: 'Error al agregar notas' });
+  }
+};

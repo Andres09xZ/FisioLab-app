@@ -6,6 +6,7 @@ import routes from './routes/index.js';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './docs/swagger.js';
 import { runMigrations } from './db/migrations.js';
+import notificationScheduler from './services/notificationScheduler.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -17,7 +18,14 @@ const PORT = process.env.PORT || 3001;
 // CORS: permitir solicitudes desde el frontend
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://localhost:3002'
+  'http://localhost:3002',
+  'http://localhost:5173',  // Vite default
+  'http://localhost:5174',  // Vite alternate
+  'http://localhost:4200',  // Angular default
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://192.168.56.1:3000'
 ];
 
 const corsOptions = {
@@ -28,6 +36,7 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log(`CORS bloqueado para origen: ${origin}`);
       callback(new Error('No permitido por CORS'));
     }
   },
@@ -104,6 +113,13 @@ const startServer = async () => {
 
     // Ejecutar migraciones mínimas necesarias
     await runMigrations();
+
+    // Reschedule upcoming notifications (next 7 days)
+    try {
+      await notificationScheduler.rescheduleUpcoming(7);
+    } catch (err) {
+      console.error('Error al reprogramar notificaciones:', err.message);
+    }
 
     app.listen(PORT, () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

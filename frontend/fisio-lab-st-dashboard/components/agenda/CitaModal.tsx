@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { X, Calendar, Clock, User, AlertCircle, Loader2, Target, CheckCircle2, Info } from "lucide-react"
+import { X, Calendar, Clock, User, AlertCircle, Loader2, Target, CheckCircle2, Info, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { 
   checkDisponibilidad, 
   crearCita, 
@@ -26,6 +27,7 @@ import {
   PlanTratamiento,
   Sesion
 } from "@/lib/api/citas"
+import { programarNotificacionCita } from "@/lib/api/notificaciones"
 import { useToast } from "@/hooks/use-toast"
 
 interface CitaModalProps {
@@ -73,6 +75,7 @@ export function CitaModal({
   const [duracionMinutos, setDuracionMinutos] = useState("60")
   const [titulo, setTitulo] = useState("")
   const [notas, setNotas] = useState("")
+  const [enviarNotificacion, setEnviarNotificacion] = useState(true) // Notificación activada por defecto
 
   // Disponibilidad
   const [disponibilidadVerificada, setDisponibilidadVerificada] = useState(false)
@@ -199,8 +202,11 @@ export function CitaModal({
     setConflictos([])
     setDisponibilidadVerificada(false)
 
-    const inicioISO = `${fecha}T${horaInicio}:00`
-    const finISO = `${fecha}T${calcularHoraFin()}:00`
+    // Crear fechas en zona horaria local sin conversión a UTC
+    const inicioISO = `${fecha}T${horaInicio}:00.000-05:00` // Ajustar a tu zona horaria
+    const finISO = `${fecha}T${calcularHoraFin()}:00.000-05:00`
+
+    console.log('🕐 Verificando disponibilidad:', { fecha, horaInicio, inicioISO, finISO })
 
     const result = await checkDisponibilidad(profesionalId, inicioISO, finISO)
 
@@ -266,15 +272,17 @@ export function CitaModal({
         tituloFinal = 'Cita médica'
       }
 
-      // 1. Crear la cita
+      // 1. Crear la cita con zona horaria local
       const payload: CrearCitaPayload = {
         paciente_id: pacienteId,
         profesional_id: profesionalId,
-        inicio: `${fecha}T${horaInicio}:00`,
-        fin: `${fecha}T${calcularHoraFin()}:00`,
+        inicio: `${fecha}T${horaInicio}:00.000-05:00`,
+        fin: `${fecha}T${calcularHoraFin()}:00.000-05:00`,
         titulo: tituloFinal,
         notas: notas || undefined
       }
+      
+      console.log('📝 Creando cita con payload:', payload)
 
       const resultCita = await crearCita(payload)
 
@@ -318,6 +326,18 @@ export function CitaModal({
             console.warn("No se pudo asignar la sesión:", resultAsignar.error)
             mensajeExtra = " (la sesión no pudo asignarse automáticamente)"
           }
+        }
+      }
+
+      // 3. Programar notificación si está activada
+      if (enviarNotificacion) {
+        console.log('📱 Programando notificación para cita:', citaCreada.id)
+        const resultNotificacion = await programarNotificacionCita(citaCreada.id)
+        if (resultNotificacion.success) {
+          console.log('✅ Notificación programada exitosamente')
+          mensajeExtra += " • Notificación programada"
+        } else {
+          console.warn('⚠️ No se pudo programar la notificación:', resultNotificacion.error)
         }
       }
 
@@ -569,14 +589,27 @@ export function CitaModal({
             )}
 
             {conflictos.length > 0 && (
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-2 text-sm text-red-600">
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-red-700">
                   <AlertCircle className="h-4 w-4" />
-                  {conflictos.length} conflicto(s) encontrado(s)
+                  Conflicto de horario detectado
                 </div>
                 {conflictos.map((c, i) => (
-                  <div key={i} className="text-xs text-gray-600 pl-6">
-                    • {c.titulo || "Cita"}: {format(new Date(c.inicio), "HH:mm")} - {format(new Date(c.fin), "HH:mm")}
+                  <div key={i} className="bg-white p-3 rounded border border-red-200">
+                    <div className="font-medium text-gray-900">
+                      {c.paciente_nombre || "Paciente sin nombre"}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(c.inicio), "HH:mm")} - {format(new Date(c.fin), "HH:mm")}
+                      </div>
+                      {c.titulo && (
+                        <div className="mt-1 text-xs text-gray-500">
+                          {c.titulo}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -609,6 +642,27 @@ export function CitaModal({
               onChange={(e) => setNotas(e.target.value)}
               rows={3}
             />
+          </div>
+
+          {/* Notificación SMS */}
+          <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <Checkbox
+              id="notificacion"
+              checked={enviarNotificacion}
+              onCheckedChange={(checked) => setEnviarNotificacion(checked as boolean)}
+            />
+            <div className="flex-1">
+              <label
+                htmlFor="notificacion"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+              >
+                <Bell className="h-4 w-4 text-blue-600" />
+                Enviar notificación SMS
+              </label>
+              <p className="text-xs text-gray-600 mt-1">
+                El paciente recibirá un SMS 30 minutos antes de la cita
+              </p>
+            </div>
           </div>
         </div>
 

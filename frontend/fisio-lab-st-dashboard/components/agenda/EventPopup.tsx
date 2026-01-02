@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Calendar, Clock, CheckCircle2, Edit, XCircle, AlertTriangle, Trash2 } from "lucide-react"
+import { Calendar, Clock, CheckCircle2, Edit, XCircle, AlertTriangle, Trash2, User, Phone, Mail, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,11 @@ interface EventPopupProps {
     paciente_id?: string
     profesional_id?: string
     notas?: string
+    paciente_nombre?: string
+    paciente_telefono?: string
+    paciente_email?: string
+    profesional_nombre?: string
+    recurso_nombre?: string
   }
 }
 
@@ -62,7 +67,15 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
 
   const handleCompletar = async () => {
     setLoading(true)
+    
+    console.log('Intentando completar cita:', {
+      id: evento.id,
+      notas: notasCompletar
+    })
+    
     const result = await completarCita(evento.id, notasCompletar)
+
+    console.log('Resultado de completar cita:', result)
 
     if (result.success) {
       toast({
@@ -72,9 +85,10 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
       onSuccess?.()
       onClose()
     } else {
+      console.error('Error al completar cita:', result)
       toast({
-        title: "Error",
-        description: result.error || "No se pudo completar la cita",
+        title: "❌ Error al completar",
+        description: result.error || result.message || "No se pudo completar la cita. Revisa la consola del backend para más detalles.",
         variant: "destructive"
       })
     }
@@ -162,7 +176,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Calendar className="h-5 w-5 text-[#056CF2]" />
@@ -182,6 +196,81 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
               </Badge>
             </div>
           </div>
+
+          {/* Información del Paciente */}
+          {(evento.paciente_nombre || evento.paciente_telefono || evento.paciente_email) && (
+            <div className="bg-[#EBF5FF] border border-[#4BA4F2]/30 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-[#056CF2] font-medium mb-2">
+                <User className="h-5 w-5" />
+                <span>Información del Paciente</span>
+              </div>
+              
+              {evento.paciente_nombre && (
+                <div className="flex items-start gap-2">
+                  <User className="h-4 w-4 text-gray-500 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-gray-500">Nombre</div>
+                    <div className="font-medium text-gray-900">{evento.paciente_nombre}</div>
+                  </div>
+                </div>
+              )}
+              
+              {evento.paciente_telefono && (
+                <div className="flex items-start gap-2">
+                  <Phone className="h-4 w-4 text-gray-500 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-gray-500">Teléfono</div>
+                    <a 
+                      href={`tel:${evento.paciente_telefono}`} 
+                      className="font-medium text-[#056CF2] hover:underline"
+                    >
+                      {evento.paciente_telefono}
+                    </a>
+                  </div>
+                </div>
+              )}
+              
+              {evento.paciente_email && (
+                <div className="flex items-start gap-2">
+                  <Mail className="h-4 w-4 text-gray-500 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-gray-500">Email</div>
+                    <a 
+                      href={`mailto:${evento.paciente_email}`} 
+                      className="font-medium text-[#056CF2] hover:underline break-all"
+                    >
+                      {evento.paciente_email}
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Información del Profesional y Recurso */}
+          {(evento.profesional_nombre || evento.recurso_nombre) && (
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              {evento.profesional_nombre && (
+                <div className="flex items-start gap-2">
+                  <Briefcase className="h-4 w-4 text-gray-500 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-gray-500">Profesional</div>
+                    <div className="font-medium text-gray-900">{evento.profesional_nombre}</div>
+                  </div>
+                </div>
+              )}
+              
+              {evento.recurso_nombre && (
+                <div className="flex items-start gap-2">
+                  <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                  <div>
+                    <div className="text-xs text-gray-500">Recurso/Sala</div>
+                    <div className="font-medium text-gray-900">{evento.recurso_nombre}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Horario - Editable */}
           {mostrarEditarHora ? (

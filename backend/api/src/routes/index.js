@@ -13,6 +13,8 @@ import pagosRoutes from './pagos.routes.js';
 import certificadosRoutes from './certificados.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import reportesRoutes from './reportes.routes.js';
+import ejerciciosRoutes from './ejercicios.routes.js';
+import notificationsRoutes from './notifications.routes.js';
 
 const router = Router();
 
@@ -25,6 +27,8 @@ router.use('/evaluaciones', evaluacionesRoutes);
 router.use('/citas', citasRoutes);
 router.use('/agenda', agendaRoutes);
 router.use('/sesiones', sesionesRoutes);
+router.use('/ejercicios', ejerciciosRoutes);
+router.use('/notifications', notificationsRoutes);
 // Rutas con paths completos dentro del módulo
 router.use('/', planesRoutes);
 router.use('/', archivosRoutes);
@@ -32,6 +36,8 @@ router.use('/', pagosRoutes);
 router.use('/', certificadosRoutes);
 router.use('/', dashboardRoutes);
 router.use('/', reportesRoutes);
+// Rutas de ejercicios asociadas a planes (paths completos)
+router.use('/', ejerciciosRoutes);
 
 // Ruta de health check
 router.get('/health', (req, res) => {

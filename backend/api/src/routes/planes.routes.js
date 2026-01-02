@@ -9,7 +9,8 @@ import {
   generarSesionesAutomaticamente,
   generarSesionesPendientes,
   finalizarPlan,
-  cambiarEstadoPlan
+  cambiarEstadoPlan,
+  deletePlan
 } from '../controllers/planes.controller.js';
 
 const router = Router();
@@ -239,6 +240,64 @@ router.get('/planes/:id', getPlan);
  *         description: Error del servidor
  */
 router.put('/planes/:id', updatePlan);
+
+/**
+ * @swagger
+ * /api/planes/{id}:
+ *   delete:
+ *     summary: Eliminar plan de tratamiento
+ *     description: Elimina un plan y todas sus sesiones/citas asociadas. No permite eliminar planes con sesiones completadas a menos que se use force=true.
+ *     tags: [Planes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del plan a eliminar
+ *       - in: query
+ *         name: force
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *         description: Si es 'true', elimina el plan aunque tenga sesiones completadas
+ *     responses:
+ *       200:
+ *         description: Plan eliminado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     paciente_id:
+ *                       type: string
+ *                     objetivo:
+ *                       type: string
+ *                 eliminados:
+ *                   type: object
+ *                   properties:
+ *                     sesiones:
+ *                       type: integer
+ *                     citas:
+ *                       type: integer
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: El plan tiene sesiones completadas (use force=true)
+ *       404:
+ *         description: Plan no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.delete('/planes/:id', deletePlan);
 
 /**
  * @swagger

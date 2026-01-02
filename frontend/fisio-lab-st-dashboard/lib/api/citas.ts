@@ -42,6 +42,14 @@ export interface CalendarioEvent {
   estado: string;
   paciente_id?: string;
   profesional_id?: string;
+  notas?: string;
+  // Datos del paciente
+  paciente_nombre?: string;
+  paciente_telefono?: string;
+  paciente_email?: string;
+  // Datos del profesional y recurso
+  profesional_nombre?: string;
+  recurso_nombre?: string;
 }
 
 export interface Sesion {
@@ -117,8 +125,18 @@ export async function fetchCalendario(
       url.searchParams.append('profesional_id', profesionalId);
     }
 
+    console.log('🔗 Llamando a API:', url.toString());
+
     const res = await fetch(url.toString());
     const json = await res.json();
+
+    console.log('📡 Respuesta del servidor:', {
+      status: res.status,
+      ok: res.ok,
+      response: json,
+      dataLength: json.data?.length || 0,
+      fullData: json.data
+    });
 
     if (!res.ok) {
       return { success: false, data: [], error: json.message || 'Error al cargar calendario' };
@@ -241,27 +259,42 @@ export async function moverCita(
 export async function completarCita(
   id: string,
   notas?: string
-): Promise<{ success: boolean; data?: Cita; error?: string }> {
+): Promise<{ success: boolean; data?: Cita; error?: string; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE_URL}/citas/${id}/completar`, {
+    const url = `${API_BASE_URL}/citas/${id}/completar`;
+    console.log('✅ Completando cita:', { id, url, notas });
+    
+    const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notas: notas || '' })
     });
 
+    console.log('📡 Respuesta completar:', { status: res.status, ok: res.ok });
+
     const json = await res.json();
+    console.log('📦 JSON completar:', json);
 
     if (!res.ok) {
+      console.error('Error al completar cita:', {
+        status: res.status,
+        statusText: res.statusText,
+        response: json
+      });
       return {
         success: false,
-        error: json.message || 'Error al completar cita'
+        error: json.message || json.error || `Error ${res.status}: ${res.statusText}`,
+        message: json.message
       };
     }
 
     return { success: true, data: json.data };
   } catch (error) {
-    console.error('completarCita error:', error);
-    return { success: false, error: 'Error de conexión' };
+    console.error('❌ Error en completarCita:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Error de conexión' 
+    };
   }
 }
 
@@ -399,13 +432,21 @@ export async function cancelarCita(
   message?: string;
 }> {
   try {
-    const res = await fetch(`${API_BASE_URL}/citas/${id}/cancelar`, {
+    const url = `${API_BASE_URL}/citas/${id}/cancelar`;
+    console.log('🚫 Cancelando cita:', { id, url, motivo });
+    
+    const res = await fetch(url, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ motivo: motivo || '' })
     });
 
+    console.log('📡 Respuesta cancelar:', { status: res.status, ok: res.ok });
+
     const json = await res.json();
+    console.log('📦 JSON cancelar:', json);
 
     if (!res.ok) {
       return {
@@ -416,6 +457,7 @@ export async function cancelarCita(
 
     return { success: true, data: json.data, message: json.message };
   } catch (error) {
+    console.error('❌ Error en cancelarCita:', error);
     console.error('cancelarCita error:', error);
     return { success: false, error: 'Error de conexión' };
   }

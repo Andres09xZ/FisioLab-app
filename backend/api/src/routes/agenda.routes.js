@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { checkDisponibilidad } from '../controllers/citas.controller.js';
+import { checkDisponibilidad, getAgenda } from '../controllers/citas.controller.js';
 
 const router = Router();
 
@@ -9,6 +9,111 @@ const router = Router();
  *   - name: Agenda
  *     description: Gestión de disponibilidad y horarios
  */
+
+/**
+ * @swagger
+ * /api/agenda:
+ *   get:
+ *     summary: Obtener agenda con filtros
+ *     description: Retorna citas formateadas para calendario con filtros por profesional, paciente, fecha y vista
+ *     tags: [Agenda]
+ *     parameters:
+ *       - in: query
+ *         name: fecha
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha base para la consulta (YYYY-MM-DD)
+ *       - in: query
+ *         name: fecha_inicio
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha inicio del rango (alternativa a fecha)
+ *       - in: query
+ *         name: fecha_fin
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha fin del rango (alternativa a fecha)
+ *       - in: query
+ *         name: profesional_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrar por profesional
+ *       - in: query
+ *         name: paciente_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrar por paciente
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *           enum: [programada, completada, cancelada, no_asistio, en_progreso]
+ *         description: Filtrar por estado
+ *       - in: query
+ *         name: vista
+ *         schema:
+ *           type: string
+ *           enum: [dia, semana, mes]
+ *         description: Tipo de vista para calcular el rango automáticamente
+ *     responses:
+ *       200:
+ *         description: Eventos de agenda formateados para FullCalendar
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     eventos:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           title:
+ *                             type: string
+ *                           start:
+ *                             type: string
+ *                             format: date-time
+ *                           end:
+ *                             type: string
+ *                             format: date-time
+ *                           backgroundColor:
+ *                             type: string
+ *                           extendedProps:
+ *                             type: object
+ *                     resumen:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                         programadas:
+ *                           type: integer
+ *                         completadas:
+ *                           type: integer
+ *                         canceladas:
+ *                           type: integer
+ *                     periodo:
+ *                       type: object
+ *                       properties:
+ *                         inicio:
+ *                           type: string
+ *                         fin:
+ *                           type: string
+ *                         vista:
+ *                           type: string
+ */
+router.get('/', getAgenda);
 
 /**
  * @swagger

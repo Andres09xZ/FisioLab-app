@@ -268,13 +268,42 @@ export default function AgendaPage() {
                         extendedProps: {
                           estado: cita.estado,
                           paciente_id: cita.paciente_id,
-                          profesional_id: cita.profesional_id
+                          profesional_id: cita.profesional_id,
+                          notas: cita.notas,
+                          // Datos del paciente
+                          paciente_nombre: cita.paciente_nombre,
+                          paciente_telefono: cita.paciente_telefono,
+                          paciente_email: cita.paciente_email,
+                          // Datos del profesional y recurso
+                          profesional_nombre: cita.profesional_nombre,
+                          recurso_nombre: cita.recurso_nombre
                         }
                       }))}
                     eventClick={handleEventClick}
                     eventDrop={handleEventDrop}
                     select={handleDateSelect}
                     height="auto"
+                    eventContent={(eventInfo) => {
+                      const { event } = eventInfo
+                      const { extendedProps } = event
+                      return (
+                        <div className="p-1 overflow-hidden text-xs">
+                          <div className="font-semibold truncate">{event.title}</div>
+                          {extendedProps.paciente_nombre && (
+                            <div className="flex items-center gap-1 mt-0.5 truncate">
+                              <User className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{extendedProps.paciente_nombre}</span>
+                            </div>
+                          )}
+                          {extendedProps.paciente_telefono && (
+                            <div className="flex items-center gap-1 truncate opacity-90">
+                              <Clock className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{extendedProps.paciente_telefono}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    }}
                     buttonText={{
                       today: 'Hoy',
                       month: 'Mes',

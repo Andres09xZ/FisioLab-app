@@ -180,3 +180,115 @@ export const getMe = async (req, res) => {
     });
   }
 };
+
+// POST /api/auth/logout
+export const logout = async (req, res) => {
+  try {
+    // En una implementación con JWT stateless, el logout es manejado en el cliente
+    // simplemente eliminando el token. Este endpoint sirve para:
+    // 1. Confirmar la intención de logout
+    // 2. Potencialmente invalidar el token en una blacklist (implementación futura)
+    // 3. Registrar el evento de logout
+
+    res.json({
+      success: true,
+      message: 'Sesión cerrada exitosamente'
+    });
+  } catch (error) {
+    console.error('Error en logout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al cerrar sesión',
+      error: error.message
+    });
+  }
+};
+
+// POST /api/auth/refresh (opcional - para refrescar token)
+export const refreshToken = async (req, res) => {
+  try {
+    // El usuario viene del middleware (token válido pero posiblemente por expirar)
+    const newToken = generateToken(req.user.id);
+
+    res.json({
+      success: true,
+      message: 'Token refrescado exitosamente',
+      data: {
+        token: newToken,
+        user: req.user
+      }
+    });
+  } catch (error) {
+    console.error('Error en refreshToken:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al refrescar token',
+      error: error.message
+    });
+  }
+};
+
+// PUT /api/auth/password - Cambiar contraseña
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contraseña actual y nueva son requeridas'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'La nueva contraseña debe tener al menos 6 caracteres'
+      });
+    }
+
+    // Obtener hash actual
+    const userResult = await query(
+      'SELECT password_hash FROM usuarios WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Verificar contraseña actual
+    const isValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Contraseña actual incorrecta'
+      });
+    }
+
+    // Hashear nueva contraseña
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // Actualizar
+    await query(
+      'UPDATE usuarios SET password_hash = $1 WHERE id = $2',
+      [newHash, userId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Contraseña actualizada exitosamente'
+    });
+  } catch (error) {
+    console.error('Error en changePassword:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al cambiar contraseña',
+      error: error.message
+    });
+  }
+};

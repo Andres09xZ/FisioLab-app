@@ -37,7 +37,9 @@ import {
   ChevronUp,
   Edit,
   CalendarDays,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  Trash2
 } from "lucide-react"
 
 const API_BASE = "http://localhost:3001/api"
@@ -189,6 +191,23 @@ interface Evaluacion {
   diagnostico?: string
   desde_cuando?: string
   tratamientos_anteriores?: string
+  escala_eva?: string
+  asimetria?: string
+  atrofias_musculares?: string
+  inflamacion?: string
+  equimosis?: string
+  edema?: string
+  otros_hallazgos?: string
+  observaciones_inspeccion?: string
+  contracturas?: string
+  irradiacion?: string
+  hacia_donde?: string
+  intensidad?: string
+  sensacion?: string
+  limitacion_izquierdo?: string
+  limitacion_derecho?: string
+  crujidos?: string
+  amplitud_movimientos?: string
 }
 
 interface Sesion {
@@ -229,6 +248,9 @@ export default function PacienteDetallePage() {
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [showSesionesModal, setShowSesionesModal] = useState(false)
   const [showEvaluacionModal, setShowEvaluacionModal] = useState(false)
+  const [showViewEvaluacionModal, setShowViewEvaluacionModal] = useState(false)
+  const [evaluacionToView, setEvaluacionToView] = useState<Evaluacion | null>(null)
+  const [evaluacionToEdit, setEvaluacionToEdit] = useState<string | null>(null)
   const [selectedEvaluacion, setSelectedEvaluacion] = useState<string | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [planForm, setPlanForm] = useState({
@@ -272,8 +294,11 @@ export default function PacienteDetallePage() {
   const [selectedSesion, setSelectedSesion] = useState<Sesion | null>(null)
   const [editSesionForm, setEditSesionForm] = useState({
     fecha_programada: "",
-    hora: ""
+    hora: "",
+    profesional_id: ""
   })
+  const [horarioConflicto, setHorarioConflicto] = useState<{ valido: boolean, mensaje: string }>({ valido: true, mensaje: "" })
+  const [validandoHorario, setValidandoHorario] = useState(false)
   const [showEditPlanModal, setShowEditPlanModal] = useState(false)
   const [editPlanForm, setEditPlanForm] = useState({
     id: "",
@@ -356,6 +381,24 @@ export default function PacienteDetallePage() {
       if (!pacienteId) {
         throw new Error("No se ha identificado el paciente")
       }
+      
+      // Si hay evaluacionToEdit, es una actualización
+      if (evaluacionToEdit) {
+        const res = await fetch(`${API_BASE}/evaluaciones/${evaluacionToEdit}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        })
+        if (!res.ok) {
+          const error = await res.text()
+          throw new Error(error || `Error HTTP: ${res.status}`)
+        }
+        const result = await res.json()
+        if (!result.success) throw new Error(result.message || "Error al actualizar la evaluación")
+        return result
+      }
+      
+      // Si no, es una nueva evaluación
       const res = await fetch(`${API_BASE}/evaluaciones`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -375,6 +418,7 @@ export default function PacienteDetallePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evaluaciones', pacienteId] })
       setShowEvaluacionModal(false)
+      setEvaluacionToEdit(null)
       setEvaluacionForm({
         fecha_evaluacion: new Date().toISOString().split('T')[0],
         motivo_consulta: "",
@@ -400,12 +444,14 @@ export default function PacienteDetallePage() {
         tratamientos_anteriores: ""
       })
       toast({
-        title: "¡Evaluación creada!",
-        description: "La evaluación fisioterapéutica se ha registrado exitosamente",
+        title: evaluacionToEdit ? "¡Evaluación actualizada!" : "¡Evaluación creada!",
+        description: evaluacionToEdit 
+          ? "La evaluación fisioterapéutica se ha actualizado exitosamente"
+          : "La evaluación fisioterapéutica se ha registrado exitosamente",
       })
     },
     onError: (error: Error) => {
-      console.error("Error al crear evaluación:", error)
+      console.error("Error al crear/actualizar evaluación:", error)
       toast({
         title: "Error al crear evaluación",
         description: error.message || "Ocurrió un error desconocido",
@@ -560,7 +606,7 @@ export default function PacienteDetallePage() {
       queryClient.invalidateQueries({ queryKey: ['sesiones'] })
       setShowEditSesionModal(false)
       setSelectedSesion(null)
-      setEditSesionForm({ fecha_programada: "", hora: "" })
+      setEditSesionForm({ fecha_programada: "", hora: "", profesional_id: "" })
       toast({
         title: "¡Sesión actualizada!",
         description: "La fecha de la sesión se ha actualizado correctamente",
@@ -651,6 +697,217 @@ export default function PacienteDetallePage() {
     setShowPlanModal(true)
   }
 
+  const handleViewEvaluacion = (evaluacion: Evaluacion) => {
+    setEvaluacionToView(evaluacion)
+    setShowViewEvaluacionModal(true)
+  }
+
+  const handleEditEvaluacion = (evaluacion: Evaluacion) => {
+    setEvaluacionToEdit(evaluacion.id)
+    setEvaluacionForm({
+      fecha_evaluacion: evaluacion.fecha_evaluacion?.split('T')[0] || new Date().toISOString().split('T')[0],
+      motivo_consulta: evaluacion.motivo_consulta || "",
+      desde_cuando: evaluacion.desde_cuando || "",
+      escala_eva: typeof evaluacion.escala_eva === 'string' ? parseInt(evaluacion.escala_eva) || 0 : evaluacion.escala_eva || 0,
+      asimetria: evaluacion.asimetria || "",
+      atrofias_musculares: evaluacion.atrofias_musculares || "",
+      inflamacion: evaluacion.inflamacion || "",
+      equimosis: evaluacion.equimosis || "",
+      edema: evaluacion.edema || "",
+      otros_hallazgos: evaluacion.otros_hallazgos || "",
+      observaciones_inspeccion: evaluacion.observaciones_inspeccion || "",
+      contracturas: evaluacion.contracturas || "",
+      irradiacion: evaluacion.irradiacion === 'true' || (evaluacion.irradiacion as any) === true,
+      hacia_donde: evaluacion.hacia_donde || "",
+      intensidad: evaluacion.intensidad || "",
+      sensacion: evaluacion.sensacion || "",
+      limitacion_izquierdo: evaluacion.limitacion_izquierdo || "",
+      limitacion_derecho: evaluacion.limitacion_derecho || "",
+      crujidos: evaluacion.crujidos || "",
+      amplitud_movimientos: evaluacion.amplitud_movimientos || "",
+      diagnostico: evaluacion.diagnostico || "",
+      tratamientos_anteriores: evaluacion.tratamientos_anteriores || ""
+    })
+    setShowEvaluacionModal(true)
+  }
+
+  const handleDeleteEvaluacion = async (evaluacionId: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar esta evaluación?")) {
+      return
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/evaluaciones/${evaluacionId}`, {
+        method: 'DELETE'
+      })
+      
+      if (!res.ok) {
+        const error = await res.text()
+        throw new Error(error || `Error HTTP: ${res.status}`)
+      }
+      
+      const result = await res.json()
+      if (!result.success) throw new Error(result.message || "Error al eliminar evaluación")
+      
+      queryClient.invalidateQueries({ queryKey: ['evaluaciones', pacienteId] })
+      toast({
+        title: "Evaluación eliminada",
+        description: "La evaluación se ha eliminado correctamente",
+      })
+    } catch (error) {
+      console.error("Error al eliminar evaluación:", error)
+      toast({
+        title: "Error al eliminar",
+        description: error instanceof Error ? error.message : "Ocurrió un error desconocido",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Función para validar horarios
+  const validarHorario = async (fecha: string, hora: string, profesionalId: string, sesionIdExcluir?: string) => {
+    if (!fecha || !hora || !profesionalId) {
+      setHorarioConflicto({ valido: true, mensaje: "" })
+      return
+    }
+
+    setValidandoHorario(true)
+    
+    try {
+      // Construir fecha_inicio y fecha_fin (asumiendo 60 minutos de duración)
+      const fechaInicio = new Date(`${fecha}T${hora}:00`)
+      const fechaFin = new Date(fechaInicio)
+      fechaFin.setMinutes(fechaFin.getMinutes() + 60)
+
+      const params = new URLSearchParams({
+        profesional_id: profesionalId,
+        fecha_inicio: fechaInicio.toISOString(),
+        fecha_fin: fechaFin.toISOString()
+      })
+
+      if (sesionIdExcluir) {
+        params.append('excluir_sesion_id', sesionIdExcluir)
+      }
+
+      const res = await fetch(`${API_BASE}/sesiones/validar-horario?${params.toString()}`)
+      
+      if (!res.ok) {
+        // Si el endpoint no existe (404) o hay error, log y permitir continuar
+        const errorText = await res.text()
+        console.warn('Endpoint de validación no disponible:', res.status, errorText)
+        
+        // Si es 404, el endpoint no está implementado aún
+        if (res.status === 404) {
+          setHorarioConflicto({ valido: true, mensaje: "" })
+          return
+        }
+        
+        throw new Error(`Error ${res.status}: ${errorText || 'Error al validar horario'}`)
+      }
+
+      const result = await res.json()
+      
+      if (result.disponible) {
+        setHorarioConflicto({ valido: true, mensaje: "" })
+      } else {
+        const conflictos = result.conflictos || []
+        const mensajeConflictos = conflictos.length > 0
+          ? `Horario ocupado. Conflicto con: ${conflictos.map((c: any) => c.titulo || 'Cita existente').join(', ')}`
+          : 'Este horario no está disponible'
+        
+        setHorarioConflicto({ valido: false, mensaje: mensajeConflictos })
+      }
+    } catch (error) {
+      console.error('Error validando horario:', error)
+      // En caso de error del endpoint, permitir continuar (graceful degradation)
+      setHorarioConflicto({ valido: true, mensaje: "" })
+    } finally {
+      setValidandoHorario(false)
+    }
+  }
+
+  // Mutation para actualizar sesión
+  const updateSesionMutation = useMutation({
+    mutationFn: async (data: { sesionId: string, fecha_programada: string, hora: string }) => {
+      const res = await fetch(`${API_BASE}/sesiones/${data.sesionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha_programada: data.fecha_programada,
+          hora: data.hora
+        })
+      })
+      
+      if (!res.ok) {
+        const error = await res.text()
+        throw new Error(error || `Error HTTP: ${res.status}`)
+      }
+      
+      const result = await res.json()
+      if (!result.success) throw new Error(result.message || "Error al actualizar sesión")
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['planes', pacienteId] })
+      setShowEditSesionModal(false)
+      setSelectedSesion(null)
+      toast({
+        title: "Sesión actualizada",
+        description: "La fecha y hora de la sesión se actualizaron correctamente",
+      })
+    },
+    onError: (error: Error) => {
+      console.error("Error al actualizar sesión:", error)
+      toast({
+        title: "Error al actualizar sesión",
+        description: error.message || "Ocurrió un error desconocido",
+        variant: "destructive",
+      })
+    }
+  })
+
+  const handleEditSesion = (sesion: Sesion) => {
+    setSelectedSesion(sesion)
+    const fechaStr = sesion.fecha_sesion || sesion.fecha_programada
+    const fechaDate = fechaStr ? new Date(fechaStr) : new Date()
+    
+    setEditSesionForm({
+      fecha_programada: format(fechaDate, 'yyyy-MM-dd'),
+      hora: sesion.hora || format(fechaDate, 'HH:mm'),
+      profesional_id: sesion.profesional_id || ""
+    })
+    setHorarioConflicto({ valido: true, mensaje: "" })
+    setShowEditSesionModal(true)
+  }
+
+  const handleSubmitEditSesion = () => {
+    if (!selectedSesion) return
+    
+    if (!editSesionForm.fecha_programada || !editSesionForm.hora) {
+      toast({
+        title: "Error",
+        description: "Fecha y hora son requeridos",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!horarioConflicto.valido) {
+      toast({
+        title: "Horario no disponible",
+        description: horarioConflicto.mensaje,
+        variant: "destructive",
+      })
+      return
+    }
+
+    updateSesionMutation.mutate({
+      sesionId: selectedSesion.id,
+      fecha_programada: editSesionForm.fecha_programada,
+      hora: editSesionForm.hora
+    })
+  }
+
   const handleGenerarSesiones = (planId: string) => {
     setSelectedPlan(planId)
     setShowSesionesModal(true)
@@ -684,6 +941,20 @@ export default function PacienteDetallePage() {
       return
     }
     editPlanMutation.mutate(editPlanForm)
+  }
+
+  const togglePlanExpanded = (planId: string) => {
+    setExpandedPlans(prev => ({
+      ...prev,
+      [planId]: !prev[planId]
+    }))
+  }
+
+  const handleCompletarSesion = (sesionId: string) => {
+    if (!confirm("¿Marcar esta sesión como completada?")) {
+      return
+    }
+    completarSesionMutation.mutate(sesionId)
   }
 
   const handleSubmitPlan = () => {
@@ -745,49 +1016,6 @@ export default function PacienteDetallePage() {
         ? prev.dias_semana.filter(d => d !== dia)
         : [...prev.dias_semana, dia].sort()
     }))
-  }
-
-  const togglePlanExpanded = (planId: string) => {
-    setExpandedPlans(prev => ({
-      ...prev,
-      [planId]: !prev[planId]
-    }))
-  }
-
-  const handleEditSesion = (sesion: Sesion) => {
-    setSelectedSesion(sesion)
-    // El backend puede usar fecha_sesion o fecha_programada
-    const fechaStr = sesion.fecha_sesion || sesion.fecha_programada || sesion.cita_inicio
-    let horaStr = sesion.hora
-    if (!horaStr && sesion.cita_inicio) {
-      horaStr = format(new Date(sesion.cita_inicio), 'HH:mm')
-    }
-    setEditSesionForm({
-      fecha_programada: fechaStr ? fechaStr.split('T')[0] : "",
-      hora: horaStr || ""
-    })
-    setShowEditSesionModal(true)
-  }
-
-  const handleSubmitEditSesion = () => {
-    if (!selectedSesion) return
-    if (!editSesionForm.fecha_programada || !editSesionForm.hora) {
-      toast({
-        title: "Error",
-        description: "La fecha y hora son requeridas",
-        variant: "destructive",
-      })
-      return
-    }
-    editSesionMutation.mutate({
-      id: selectedSesion.id,
-      fecha_programada: editSesionForm.fecha_programada,
-      hora: editSesionForm.hora
-    })
-  }
-
-  const handleCompletarSesion = (sesionId: string) => {
-    completarSesionMutation.mutate(sesionId)
   }
 
   const getInitials = (nombres: string, apellidos: string) => {
@@ -988,7 +1216,7 @@ export default function PacienteDetallePage() {
                       return (
                         <Card key={evaluacion.id} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
                           <CardContent className="pt-4">
-                            <div className="flex items-start justify-between">
+                            <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
                                   <Badge variant="outline" className="text-xs">
@@ -1014,16 +1242,48 @@ export default function PacienteDetallePage() {
                                   <p className="text-xs text-gray-600">Desde hace: {evaluacion.desde_cuando}</p>
                                 )}
                               </div>
-                              {!tienePlan && (
-                                <Button
-                                  onClick={() => handleCrearPlan(evaluacion.id)}
-                                  size="sm"
-                                  className="bg-[#056CF2] hover:bg-[#0558C9]"
-                                >
-                                  <Plus className="h-4 w-4 mr-1" />
-                                  Crear Plan
-                                </Button>
-                              )}
+                              
+                              {/* Botones de acción */}
+                              <div className="flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => handleViewEvaluacion(evaluacion)}
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-[#056CF2] border-[#056CF2] hover:bg-[#056CF2]/10"
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Ver
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleEditEvaluacion(evaluacion)}
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-emerald-600 border-emerald-600 hover:bg-emerald-50"
+                                  >
+                                    <Edit className="h-4 w-4 mr-1" />
+                                    Editar
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleDeleteEvaluacion(evaluacion.id)}
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                {!tienePlan && (
+                                  <Button
+                                    onClick={() => handleCrearPlan(evaluacion.id)}
+                                    size="sm"
+                                    className="bg-[#056CF2] hover:bg-[#0558C9] w-full"
+                                  >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Crear Plan
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -1062,6 +1322,9 @@ export default function PacienteDetallePage() {
                       const sesionesRestantes = sesionesTotal - sesionesCompletadas
                       const fechaCreacionValida = plan.fecha_creacion && !isNaN(new Date(plan.fecha_creacion).getTime())
                       
+                      // Buscar la evaluación asociada al plan
+                      const evaluacionAsociada = evaluaciones.find((ev: Evaluacion) => ev.id === plan.evaluacion_id)
+                      
                       return (
                         <Card key={plan.id} className={`border-l-4 ${plan.estado === 'activo' ? 'border-l-[#0AA640]' : 'border-l-gray-400'}`}>
                           <CardContent className="pt-5">
@@ -1075,6 +1338,70 @@ export default function PacienteDetallePage() {
                                       {plan.estado === 'activo' ? 'Activo' : 'Finalizado'}
                                     </Badge>
                                   </div>
+                                  
+                                  {/* Información de la evaluación asociada - Diseño mejorado */}
+                                  {evaluacionAsociada ? (
+                                    <div className="bg-linear-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500 rounded-lg p-3 mb-3 shadow-sm hover:shadow-md transition-shadow">
+                                      <div className="flex items-start gap-3">
+                                        <div className="bg-blue-500 p-2 rounded-lg shrink-0">
+                                          <ClipboardList className="h-4 w-4 text-white" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">Evaluación asociada</p>
+                                            {evaluacionAsociada.escala_eva !== undefined && (
+                                              <Badge className="bg-blue-600 text-white text-xs px-2 py-0.5">
+                                                EVA: {evaluacionAsociada.escala_eva}/10
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <h5 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight">
+                                            {evaluacionAsociada.motivo_consulta}
+                                          </h5>
+                                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                            {evaluacionAsociada.fecha_evaluacion && (
+                                              <span className="flex items-center gap-1.5 text-xs text-gray-700 bg-white px-2 py-1 rounded-md">
+                                                <Calendar className="h-3.5 w-3.5 text-blue-600" />
+                                                <span className="font-medium">
+                                                  {format(new Date(evaluacionAsociada.fecha_evaluacion), "d MMM yyyy", { locale: es })}
+                                                </span>
+                                              </span>
+                                            )}
+                                            {evaluacionAsociada.diagnostico && (
+                                              <span className="flex items-center gap-1.5 text-xs text-gray-700 bg-white px-2 py-1 rounded-md max-w-xs">
+                                                <FileText className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                                                <span className="font-medium truncate">{evaluacionAsociada.diagnostico}</span>
+                                              </span>
+                                            )}
+                                            {evaluacionAsociada.desde_cuando && (
+                                              <span className="flex items-center gap-1.5 text-xs text-gray-700 bg-white px-2 py-1 rounded-md">
+                                                <Clock className="h-3.5 w-3.5 text-purple-600" />
+                                                <span className="font-medium">{evaluacionAsociada.desde_cuando}</span>
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : plan.evaluacion_id ? (
+                                    <div className="bg-amber-50 border-l-4 border-l-amber-500 rounded-lg p-3 mb-3">
+                                      <div className="flex items-start gap-2">
+                                        <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                                        <div>
+                                          <p className="text-xs font-semibold text-amber-900">Evaluación no encontrada</p>
+                                          <p className="text-xs text-amber-700 mt-0.5">ID: {plan.evaluacion_id}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="bg-gray-50 border-l-4 border-l-gray-400 rounded-lg p-3 mb-3">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-gray-500" />
+                                        <p className="text-xs font-medium text-gray-600">Plan creado sin evaluación asociada</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
                                   {fechaCreacionValida && plan.fecha_creacion && (
                                     <p className="text-xs text-gray-600">
                                       Creado el {format(new Date(plan.fecha_creacion), "d 'de' MMMM, yyyy", { locale: es })}
@@ -1086,7 +1413,7 @@ export default function PacienteDetallePage() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleEditPlan(plan)}
-                                  className="text-[#056CF2] border-[#056CF2] hover:bg-[#056CF2]/10"
+                                  className="text-[#056CF2] border-[#056CF2] hover:bg-[#056CF2]/10 shrink-0"
                                 >
                                   <Edit className="h-4 w-4 mr-1" />
                                   Editar
@@ -1163,12 +1490,110 @@ export default function PacienteDetallePage() {
 
       {/* Modal Crear Plan */}
       <Dialog open={showPlanModal} onOpenChange={setShowPlanModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Crear Plan de Tratamiento</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
+            {/* Información de la Evaluación - Diseño mejorado */}
+            {selectedEvaluacion && (() => {
+              const evaluacion = evaluaciones.find((e: Evaluacion) => e.id === selectedEvaluacion)
+              if (evaluacion) {
+                const evaNum = Number(evaluacion.escala_eva) || 0
+                const evaColor = evaNum <= 3 ? 'text-green-600' : evaNum <= 6 ? 'text-yellow-600' : 'text-red-600'
+                const evaBgColor = evaNum <= 3 ? 'bg-green-50 border-green-200' : evaNum <= 6 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
+                
+                return (
+                  <div className="bg-linear-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-blue-200">
+                      <div className="bg-blue-600 p-2 rounded-lg">
+                        <ClipboardList className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-blue-900 text-base">Información de la Evaluación</h4>
+                        <p className="text-xs text-blue-700">
+                          {evaluacion.fecha_evaluacion 
+                            ? format(new Date(evaluacion.fecha_evaluacion), "dd 'de' MMMM, yyyy", { locale: es })
+                            : "Fecha no especificada"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Motivo de Consulta */}
+                      <div className="md:col-span-2 bg-white rounded-lg p-4 border border-blue-100 shadow-sm">
+                        <div className="flex items-start gap-2">
+                          <div className="bg-blue-100 p-1.5 rounded-md mt-0.5">
+                            <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Motivo de Consulta</p>
+                            <p className="text-sm font-medium text-gray-900 leading-relaxed">{evaluacion.motivo_consulta}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Diagnóstico */}
+                      {evaluacion.diagnostico && (
+                        <div className="md:col-span-2 bg-white rounded-lg p-4 border border-blue-100 shadow-sm">
+                          <div className="flex items-start gap-2">
+                            <div className="bg-indigo-100 p-1.5 rounded-md mt-0.5">
+                              <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Diagnóstico</p>
+                              <p className="text-sm font-medium text-gray-900 leading-relaxed">{evaluacion.diagnostico}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tiempo de Evolución */}
+                      {evaluacion.desde_cuando && (
+                        <div className="bg-white rounded-lg p-4 border border-blue-100 shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-purple-100 p-2 rounded-lg">
+                              <Calendar className="h-5 w-5 text-purple-600" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Evolución</p>
+                              <p className="text-base font-bold text-gray-900">{evaluacion.desde_cuando}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Escala EVA */}
+                      {evaluacion.escala_eva !== undefined && (
+                        <div className={`rounded-lg p-4 border-2 shadow-sm ${evaBgColor}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${evaNum <= 3 ? 'bg-green-200' : evaNum <= 6 ? 'bg-yellow-200' : 'bg-red-200'}`}>
+                              <svg className={`h-5 w-5 ${evaColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Nivel de Dolor</p>
+                              <div className="flex items-baseline gap-1">
+                                <span className={`text-3xl font-black ${evaColor}`}>{evaluacion.escala_eva}</span>
+                                <span className={`text-lg font-bold ${evaColor} opacity-70`}>/10</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+              return null
+            })()}
+
             <div>
               <Label htmlFor="objetivo">Objetivo del Plan *</Label>
               <Textarea
@@ -1185,13 +1610,20 @@ export default function PacienteDetallePage() {
               <Label htmlFor="sesiones">Número de Sesiones *</Label>
               <Input
                 id="sesiones"
-                type="number"
-                min="1"
-                max="50"
+                type="text"
+                inputMode="numeric"
+                placeholder="Ej: 10"
                 value={planForm.sesiones_plan}
-                onChange={(e) => setPlanForm({ ...planForm, sesiones_plan: parseInt(e.target.value) || 10 })}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '') // Solo números
+                  const num = parseInt(value) || 0
+                  if (num <= 50 || value === '') {
+                    setPlanForm({ ...planForm, sesiones_plan: num })
+                  }
+                }}
                 className="mt-1.5"
               />
+              <p className="text-xs text-gray-500 mt-1">Máximo 50 sesiones</p>
             </div>
 
             <div>
@@ -1412,7 +1844,7 @@ export default function PacienteDetallePage() {
       <Dialog open={showEvaluacionModal} onOpenChange={setShowEvaluacionModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nueva Evaluación Fisioterapéutica</DialogTitle>
+            <DialogTitle>{evaluacionToEdit ? "Editar Evaluación Fisioterapéutica" : "Nueva Evaluación Fisioterapéutica"}</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
@@ -1526,7 +1958,11 @@ export default function PacienteDetallePage() {
                     <button
                       key={num}
                       type="button"
-                      onClick={() => setEvaluacionForm({ ...evaluacionForm, escala_eva: num })}
+                      onClick={() => setEvaluacionForm({ 
+                        ...evaluacionForm, 
+                        escala_eva: num,
+                        intensidad: `${num}/10`
+                      })}
                       className={`w-8 h-8 rounded-full font-bold text-sm transition-all ${
                         evaluacionForm.escala_eva === num
                           ? "bg-blue-600 text-white scale-125 shadow-lg"
@@ -1545,7 +1981,11 @@ export default function PacienteDetallePage() {
                     min="0"
                     max="10"
                     value={evaluacionForm.escala_eva}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, escala_eva: Number(e.target.value) })}
+                    onChange={(e) => setEvaluacionForm({ 
+                      ...evaluacionForm, 
+                      escala_eva: Number(e.target.value),
+                      intensidad: `${e.target.value}/10`
+                    })}
                     className="w-full h-3 rounded-lg eva-slider cursor-pointer"
                     style={{
                       background: `linear-gradient(to right, 
@@ -1589,53 +2029,182 @@ export default function PacienteDetallePage() {
             {/* Inspección */}
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900">Inspección</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="asimetria">Asimetría</Label>
-                  <Input
-                    id="asimetria"
-                    value={evaluacionForm.asimetria}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, asimetria: e.target.value })}
-                    className="mt-1.5"
-                  />
+              
+              {/* Asimetría - Checkboxes */}
+              <div className="space-y-2">
+                <Label>Asimetría</Label>
+                <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+                  {[
+                    { value: "Hombros", label: "Hombros" },
+                    { value: "Caderas", label: "Caderas" },
+                    { value: "Extremidades", label: "Extremidades" },
+                    { value: "Facial", label: "Facial" },
+                    { value: "Columna", label: "Columna" },
+                    { value: "No presenta", label: "No presenta" }
+                  ].map((option) => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`asimetria-${option.value}`}
+                        checked={evaluacionForm.asimetria.includes(option.value)}
+                        onCheckedChange={(checked) => {
+                          const current = evaluacionForm.asimetria
+                          let newValue
+                          if (option.value === "No presenta") {
+                            newValue = checked ? "No presenta" : ""
+                          } else if (checked) {
+                            const filtered = current.replace("No presenta", "").trim()
+                            newValue = filtered ? `${filtered}, ${option.value}` : option.value
+                          } else {
+                            newValue = current.split(",").map(v => v.trim()).filter(v => v !== option.value).join(", ")
+                          }
+                          setEvaluacionForm({ ...evaluacionForm, asimetria: newValue })
+                        }}
+                      />
+                      <label
+                        htmlFor={`asimetria-${option.value}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {option.label}
+                      </label>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <Label htmlFor="atrofias_musculares">Atrofias Musculares</Label>
-                  <Input
-                    id="atrofias_musculares"
-                    value={evaluacionForm.atrofias_musculares}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, atrofias_musculares: e.target.value })}
-                    className="mt-1.5"
-                  />
+              </div>
+
+              {/* Atrofias Musculares - Checkboxes */}
+              <div className="space-y-2">
+                <Label>Atrofias Musculares</Label>
+                <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+                  {[
+                    { value: "Cuádriceps", label: "Cuádriceps" },
+                    { value: "Bíceps", label: "Bíceps" },
+                    { value: "Deltoides", label: "Deltoides" },
+                    { value: "Gemelos", label: "Gemelos" },
+                    { value: "Glúteos", label: "Glúteos" },
+                    { value: "No presenta", label: "No presenta" }
+                  ].map((option) => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`atrofias-${option.value}`}
+                        checked={evaluacionForm.atrofias_musculares.includes(option.value)}
+                        onCheckedChange={(checked) => {
+                          const current = evaluacionForm.atrofias_musculares
+                          let newValue
+                          if (option.value === "No presenta") {
+                            newValue = checked ? "No presenta" : ""
+                          } else if (checked) {
+                            const filtered = current.replace("No presenta", "").trim()
+                            newValue = filtered ? `${filtered}, ${option.value}` : option.value
+                          } else {
+                            newValue = current.split(",").map(v => v.trim()).filter(v => v !== option.value).join(", ")
+                          }
+                          setEvaluacionForm({ ...evaluacionForm, atrofias_musculares: newValue })
+                        }}
+                      />
+                      <label
+                        htmlFor={`atrofias-${option.value}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {option.label}
+                      </label>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <Label htmlFor="inflamacion">Inflamación</Label>
-                  <Input
-                    id="inflamacion"
-                    value={evaluacionForm.inflamacion}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, inflamacion: e.target.value })}
-                    className="mt-1.5"
-                  />
+              </div>
+
+              {/* Inflamación - Checkboxes */}
+              <div className="space-y-2">
+                <Label>Inflamación</Label>
+                <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+                  {[
+                    { value: "Rodilla", label: "Rodilla" },
+                    { value: "Tobillo", label: "Tobillo" },
+                    { value: "Muñeca", label: "Muñeca" },
+                    { value: "Codo", label: "Codo" },
+                    { value: "Hombro", label: "Hombro" },
+                    { value: "No presenta", label: "No presenta" }
+                  ].map((option) => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`inflamacion-${option.value}`}
+                        checked={evaluacionForm.inflamacion.includes(option.value)}
+                        onCheckedChange={(checked) => {
+                          const current = evaluacionForm.inflamacion
+                          let newValue
+                          if (option.value === "No presenta") {
+                            newValue = checked ? "No presenta" : ""
+                          } else if (checked) {
+                            const filtered = current.replace("No presenta", "").trim()
+                            newValue = filtered ? `${filtered}, ${option.value}` : option.value
+                          } else {
+                            newValue = current.split(",").map(v => v.trim()).filter(v => v !== option.value).join(", ")
+                          }
+                          setEvaluacionForm({ ...evaluacionForm, inflamacion: newValue })
+                        }}
+                      />
+                      <label
+                        htmlFor={`inflamacion-${option.value}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {option.label}
+                      </label>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <Label htmlFor="edema">Edema</Label>
-                  <Input
-                    id="edema"
-                    value={evaluacionForm.edema}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, edema: e.target.value })}
-                    className="mt-1.5"
-                  />
+              </div>
+
+              {/* Edema - Checkboxes */}
+              <div className="space-y-2">
+                <Label>Edema</Label>
+                <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+                  {[
+                    { value: "Miembros inferiores", label: "Miembros inferiores" },
+                    { value: "Manos", label: "Manos" },
+                    { value: "Pies", label: "Pies" },
+                    { value: "Facial", label: "Facial" },
+                    { value: "Generalizado", label: "Generalizado" },
+                    { value: "No presenta", label: "No presenta" }
+                  ].map((option) => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edema-${option.value}`}
+                        checked={evaluacionForm.edema.includes(option.value)}
+                        onCheckedChange={(checked) => {
+                          const current = evaluacionForm.edema
+                          let newValue
+                          if (option.value === "No presenta") {
+                            newValue = checked ? "No presenta" : ""
+                          } else if (checked) {
+                            const filtered = current.replace("No presenta", "").trim()
+                            newValue = filtered ? `${filtered}, ${option.value}` : option.value
+                          } else {
+                            newValue = current.split(",").map(v => v.trim()).filter(v => v !== option.value).join(", ")
+                          }
+                          setEvaluacionForm({ ...evaluacionForm, edema: newValue })
+                        }}
+                      />
+                      <label
+                        htmlFor={`edema-${option.value}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {option.label}
+                      </label>
+                    </div>
+                  ))}
                 </div>
-                <div className="col-span-2">
-                  <Label htmlFor="observaciones_inspeccion">Observaciones</Label>
-                  <Textarea
-                    id="observaciones_inspeccion"
-                    value={evaluacionForm.observaciones_inspeccion}
-                    onChange={(e) => setEvaluacionForm({ ...evaluacionForm, observaciones_inspeccion: e.target.value })}
-                    className="mt-1.5"
-                    rows={2}
-                  />
-                </div>
+              </div>
+
+              {/* Observaciones */}
+              <div className="space-y-2">
+                <Label htmlFor="observaciones_inspeccion">Observaciones</Label>
+                <Textarea
+                  id="observaciones_inspeccion"
+                  value={evaluacionForm.observaciones_inspeccion}
+                  onChange={(e) => setEvaluacionForm({ ...evaluacionForm, observaciones_inspeccion: e.target.value })}
+                  placeholder="Observaciones adicionales sobre la inspección..."
+                  className="mt-1.5"
+                  rows={2}
+                />
               </div>
             </div>
 
@@ -1765,7 +2334,10 @@ export default function PacienteDetallePage() {
               disabled={createEvaluacionMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {createEvaluacionMutation.isPending ? "Creando..." : "Crear Evaluación"}
+              {createEvaluacionMutation.isPending 
+                ? (evaluacionToEdit ? "Guardando..." : "Creando...") 
+                : (evaluacionToEdit ? "Guardar Cambios" : "Crear Evaluación")
+              }
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1848,6 +2420,305 @@ export default function PacienteDetallePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal para Ver Detalles de Evaluación */}
+      <Dialog open={showViewEvaluacionModal} onOpenChange={setShowViewEvaluacionModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {evaluacionToView && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-2xl">Detalles de la Evaluación</DialogTitle>
+                <p className="text-sm text-gray-600">
+                  {evaluacionToView.fecha_evaluacion && !isNaN(new Date(evaluacionToView.fecha_evaluacion).getTime())
+                    ? format(new Date(evaluacionToView.fecha_evaluacion), "EEEE d 'de' MMMM, yyyy", { locale: es })
+                    : "Fecha no disponible"
+                  }
+                </p>
+              </DialogHeader>
+
+              <div className="space-y-6 py-4">
+                {/* Información General */}
+                <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h3 className="font-semibold text-lg text-blue-900">Información General</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-gray-600">Motivo de Consulta</Label>
+                      <p className="text-gray-900 font-medium">{evaluacionToView.motivo_consulta}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-600">Desde cuándo</Label>
+                      <p className="text-gray-900">{evaluacionToView.desde_cuando || "No especificado"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-600">Intensidad del dolor</Label>
+                      <p className="text-gray-900">{evaluacionToView.intensidad || "No especificado"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-600">Escala EVA</Label>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {evaluacionToView.escala_eva || 0}/10
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Inspección */}
+                {(evaluacionToView.asimetria || evaluacionToView.atrofias_musculares || 
+                  evaluacionToView.inflamacion || evaluacionToView.edema) && (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-gray-900">Inspección</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {evaluacionToView.asimetria && (
+                        <div>
+                          <Label className="text-gray-600">Asimetría</Label>
+                          <p className="text-gray-900">{evaluacionToView.asimetria}</p>
+                        </div>
+                      )}
+                      {evaluacionToView.atrofias_musculares && (
+                        <div>
+                          <Label className="text-gray-600">Atrofias Musculares</Label>
+                          <p className="text-gray-900">{evaluacionToView.atrofias_musculares}</p>
+                        </div>
+                      )}
+                      {evaluacionToView.inflamacion && (
+                        <div>
+                          <Label className="text-gray-600">Inflamación</Label>
+                          <p className="text-gray-900">{evaluacionToView.inflamacion}</p>
+                        </div>
+                      )}
+                      {evaluacionToView.edema && (
+                        <div>
+                          <Label className="text-gray-600">Edema</Label>
+                          <p className="text-gray-900">{evaluacionToView.edema}</p>
+                        </div>
+                      )}
+                    </div>
+                    {evaluacionToView.observaciones_inspeccion && (
+                      <div>
+                        <Label className="text-gray-600">Observaciones</Label>
+                        <p className="text-gray-900">{evaluacionToView.observaciones_inspeccion}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Palpación */}
+                {(evaluacionToView.contracturas || evaluacionToView.sensacion) && (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-gray-900">Palpación</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {evaluacionToView.contracturas && (
+                        <div>
+                          <Label className="text-gray-600">Contracturas</Label>
+                          <p className="text-gray-900">{evaluacionToView.contracturas}</p>
+                        </div>
+                      )}
+                      {evaluacionToView.sensacion && (
+                        <div>
+                          <Label className="text-gray-600">Sensación</Label>
+                          <p className="text-gray-900">{evaluacionToView.sensacion}</p>
+                        </div>
+                      )}
+                    </div>
+                    {evaluacionToView.irradiacion && (
+                      <div>
+                        <Label className="text-gray-600">Irradiación</Label>
+                        <p className="text-gray-900">
+                          Sí{evaluacionToView.hacia_donde ? ` - Hacia: ${evaluacionToView.hacia_donde}` : ""}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Movimiento */}
+                {(evaluacionToView.limitacion_izquierdo || evaluacionToView.limitacion_derecho || 
+                  evaluacionToView.crujidos || evaluacionToView.amplitud_movimientos) && (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-gray-900">Movimiento</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {evaluacionToView.limitacion_izquierdo && (
+                        <div>
+                          <Label className="text-gray-600">Limitación Izquierdo</Label>
+                          <p className="text-gray-900">{evaluacionToView.limitacion_izquierdo}</p>
+                        </div>
+                      )}
+                      {evaluacionToView.limitacion_derecho && (
+                        <div>
+                          <Label className="text-gray-600">Limitación Derecho</Label>
+                          <p className="text-gray-900">{evaluacionToView.limitacion_derecho}</p>
+                        </div>
+                      )}
+                      {evaluacionToView.crujidos && (
+                        <div>
+                          <Label className="text-gray-600">Crujidos</Label>
+                          <p className="text-gray-900">{evaluacionToView.crujidos}</p>
+                        </div>
+                      )}
+                      {evaluacionToView.amplitud_movimientos && (
+                        <div>
+                          <Label className="text-gray-600">Amplitud de Movimientos</Label>
+                          <p className="text-gray-900">{evaluacionToView.amplitud_movimientos}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Diagnóstico */}
+                {evaluacionToView.diagnostico && (
+                  <div className="space-y-2 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <h3 className="font-semibold text-emerald-900">Diagnóstico</h3>
+                    <p className="text-gray-900">{evaluacionToView.diagnostico}</p>
+                  </div>
+                )}
+
+                {/* Tratamientos Anteriores */}
+                {evaluacionToView.tratamientos_anteriores && (
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-gray-900">Tratamientos Anteriores</h3>
+                    <p className="text-gray-900">{evaluacionToView.tratamientos_anteriores}</p>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowViewEvaluacionModal(false)}
+                >
+                  Cerrar
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowViewEvaluacionModal(false)
+                    handleEditEvaluacion(evaluacionToView)
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Evaluación
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar Sesión */}
+      <Dialog open={showEditSesionModal} onOpenChange={setShowEditSesionModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Fecha de Sesión</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Alerta de validación automática */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">Validación automática</p>
+                <p className="text-xs text-blue-700">Se verificará que no haya otra cita en el horario seleccionado</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit_fecha">Nueva Fecha *</Label>
+                <Input
+                  id="edit_fecha"
+                  type="date"
+                  value={editSesionForm.fecha_programada}
+                  onChange={(e) => {
+                    setEditSesionForm({ ...editSesionForm, fecha_programada: e.target.value })
+                    // Validar horario cuando cambia la fecha
+                    if (e.target.value && editSesionForm.hora && editSesionForm.profesional_id) {
+                      validarHorario(e.target.value, editSesionForm.hora, editSesionForm.profesional_id, selectedSesion?.id)
+                    }
+                  }}
+                  className="mt-1.5"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit_hora">Nueva Hora *</Label>
+                <Input
+                  id="edit_hora"
+                  type="time"
+                  value={editSesionForm.hora}
+                  onChange={(e) => {
+                    setEditSesionForm({ ...editSesionForm, hora: e.target.value })
+                    // Validar horario cuando cambia la hora
+                    if (editSesionForm.fecha_programada && e.target.value && editSesionForm.profesional_id) {
+                      validarHorario(editSesionForm.fecha_programada, e.target.value, editSesionForm.profesional_id, selectedSesion?.id)
+                    }
+                  }}
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            {/* Mostrar fecha actual */}
+            {selectedSesion && (
+              <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                <p className="text-gray-600">Fecha actual:</p>
+                <p className="font-medium text-gray-900">
+                  {selectedSesion.fecha_sesion || selectedSesion.fecha_programada
+                    ? format(new Date(selectedSesion.fecha_sesion || selectedSesion.fecha_programada!), "EEEE d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })
+                    : "No especificada"}
+                </p>
+              </div>
+            )}
+
+            {/* Mensaje de validación */}
+            {validandoHorario && (
+              <div className="flex items-center gap-2 text-sm text-blue-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span>Validando disponibilidad...</span>
+              </div>
+            )}
+
+            {/* Mensaje de conflicto */}
+            {!horarioConflicto.valido && !validandoHorario && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-900">Horario no disponible</p>
+                  <p className="text-xs text-red-700">{horarioConflicto.mensaje}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Mensaje de disponibilidad */}
+            {horarioConflicto.valido && !validandoHorario && editSesionForm.fecha_programada && editSesionForm.hora && editSesionForm.profesional_id && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <p className="text-sm font-medium text-green-900">Horario disponible</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowEditSesionModal(false)
+                setHorarioConflicto({ valido: true, mensaje: "" })
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSubmitEditSesion}
+              disabled={updateSesionMutation.isPending || !horarioConflicto.valido || validandoHorario}
+              className="bg-[#056CF2] hover:bg-[#0558C9]"
+            >
+              {updateSesionMutation.isPending ? "Guardando..." : "Guardar Cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+

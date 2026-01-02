@@ -1,4 +1,5 @@
 import { query, getClient } from '../config/database.js';
+import scheduler from '../services/notificationScheduler.js';
 
 // CITAS
 // Columns assumed: id, paciente_id, profesional_id, recurso_id, inicio, fin, titulo, estado, notas
@@ -25,10 +26,29 @@ export const listCalendario = async (req, res) => {
   try {
     const { desde, hasta } = req.query;
     const params = [];
-    let sql = 'SELECT id, titulo as title, inicio as start, fin as end, estado FROM citas WHERE 1=1';
-    if (desde) { params.push(desde); sql += ` AND inicio >= $${params.length}`; }
-    if (hasta) { params.push(hasta); sql += ` AND fin <= $${params.length}`; }
-    sql += ' ORDER BY inicio ASC';
+    let sql = `SELECT 
+      c.id, 
+      c.titulo as title, 
+      c.inicio as start, 
+      c.fin as end, 
+      c.estado,
+      c.notas,
+      c.paciente_id,
+      c.profesional_id,
+      c.recurso_id,
+      pac.nombres || ' ' || pac.apellidos as paciente_nombre,
+      pac.celular as paciente_telefono,
+      pac.email as paciente_email,
+      prof.nombre || ' ' || prof.apellido as profesional_nombre,
+      rec.nombre as recurso_nombre
+    FROM citas c
+    LEFT JOIN pacientes pac ON c.paciente_id = pac.id
+    LEFT JOIN profesionales prof ON c.profesional_id = prof.id
+    LEFT JOIN recursos rec ON c.recurso_id = rec.id
+    WHERE 1=1`;
+    if (desde) { params.push(desde); sql += ` AND c.inicio >= $${params.length}`; }
+    if (hasta) { params.push(hasta); sql += ` AND c.fin <= $${params.length}`; }
+    sql += ' ORDER BY c.inicio ASC';
     const { rows } = await query(sql, params);
     return res.json({ success: true, data: rows });
   } catch (err) {
@@ -39,18 +59,25 @@ export const listCalendario = async (req, res) => {
 
 export const createCita = async (req, res) => {
   try {
-    const { paciente_id, profesional_id, recurso_id, inicio, fin, titulo, estado, notas } = req.body;
+    const { paciente_id, profesional_id, recurso_id, inicio, fin, titulo, estado, notas, notification_enabled } = req.body;
     // Requeridos mínimos para programar: paciente_id, inicio, fin
     if (!paciente_id || !inicio || !fin) {
       return res.status(400).json({ success: false, message: 'paciente_id, inicio y fin son requeridos' });
     }
     const { rows } = await query(
-      `INSERT INTO citas (paciente_id, profesional_id, recurso_id, inicio, fin, titulo, estado, notas)
-       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7::estado_cita,'programada'::estado_cita), $8)
-       RETURNING id, paciente_id, profesional_id, recurso_id, inicio, fin, titulo, estado`,
-      [paciente_id, profesional_id || null, recurso_id || null, inicio, fin, titulo || null, estado || null, notas || null]
+      `INSERT INTO citas (paciente_id, profesional_id, recurso_id, inicio, fin, titulo, estado, notas, notification_enabled)
+       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7::estado_cita,'programada'::estado_cita), $8, COALESCE($9, true))
+       RETURNING id, paciente_id, profesional_id, recurso_id, inicio, fin, titulo, estado, notification_enabled`,
+      [paciente_id, profesional_id || null, recurso_id || null, inicio, fin, titulo || null, estado || null, notas || null, typeof notification_enabled === 'boolean' ? notification_enabled : null]
     );
-    return res.status(201).json({ success: true, data: rows[0] });
+    const created = rows[0];
+    // Schedule notification 30 minutes before if enabled
+    try {
+      await scheduler.scheduleNotificationForCita(created);
+    } catch (err) {
+      console.error('Error scheduling notification after createCita', err.message);
+    }
+    return res.status(201).json({ success: true, data: created });
   } catch (err) {
     console.error('createCita error', err);
     return res.status(500).json({ success: false, message: 'Error al crear cita' });
@@ -439,5 +466,176 @@ export const cancelarCita = async (req, res) => {
     client.release();
     console.error('cancelarCita error', err);
     return res.status(500).json({ success: false, message: 'Error al cancelar cita' });
+  }
+};
+
+// GET /api/agenda - Agenda general con filtros avanzados
+export const getAgenda = async (req, res) => {
+  try {
+    const { 
+      fecha, 
+      fecha_inicio, 
+      fecha_fin, 
+      profesional_id, 
+      paciente_id,
+      estado,
+      vista // 'dia', 'semana', 'mes'
+    } = req.query;
+
+    const params = [];
+    let whereClauses = [];
+
+    // Determinar rango de fechas según la vista
+    let inicio, fin;
+    
+    if (fecha) {
+      // Parsear fecha en formato YYYY-MM-DD considerando zona horaria UTC
+      const [year, month, day] = fecha.split('-').map(Number);
+      const fechaBase = new Date(Date.UTC(year, month - 1, day));
+      
+      switch (vista) {
+        case 'semana':
+          // Obtener lunes de la semana
+          const dayOfWeek = fechaBase.getUTCDay();
+          const diff = fechaBase.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+          inicio = new Date(Date.UTC(year, month - 1, diff));
+          fin = new Date(inicio);
+          fin.setUTCDate(fin.getUTCDate() + 6);
+          fin.setUTCHours(23, 59, 59, 999);
+          break;
+        case 'mes':
+          inicio = new Date(Date.UTC(year, month - 1, 1));
+          fin = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+          break;
+        default: // día
+          inicio = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+          fin = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+      }
+    } else if (fecha_inicio && fecha_fin) {
+      const [yearI, monthI, dayI] = fecha_inicio.split('-').map(Number);
+      const [yearF, monthF, dayF] = fecha_fin.split('-').map(Number);
+      inicio = new Date(Date.UTC(yearI, monthI - 1, dayI, 0, 0, 0, 0));
+      fin = new Date(Date.UTC(yearF, monthF - 1, dayF, 23, 59, 59, 999));
+    } else {
+      // Por defecto: hoy
+      const now = new Date();
+      inicio = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
+      fin = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999));
+    }
+
+    params.push(inicio.toISOString());
+    whereClauses.push(`c.inicio >= $${params.length}`);
+    
+    params.push(fin.toISOString());
+    whereClauses.push(`c.inicio <= $${params.length}`);
+
+    if (profesional_id) {
+      params.push(profesional_id);
+      whereClauses.push(`c.profesional_id = $${params.length}`);
+    }
+
+    if (paciente_id) {
+      params.push(paciente_id);
+      whereClauses.push(`c.paciente_id = $${params.length}`);
+    }
+
+    if (estado) {
+      params.push(estado);
+      whereClauses.push(`c.estado = $${params.length}::estado_cita`);
+    }
+
+    const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const { rows: citas } = await query(
+      `SELECT 
+        c.id,
+        c.titulo,
+        c.inicio as start,
+        c.fin as "end",
+        c.estado,
+        c.notas,
+        c.paciente_id,
+        c.profesional_id,
+        c.recurso_id,
+        p.nombres || ' ' || p.apellidos as paciente_nombre,
+        p.celular as paciente_celular,
+        p.email as paciente_email,
+        pr.nombre || ' ' || pr.apellido as profesional_nombre,
+        pr.color_agenda as color,
+        pr.especialidad,
+        r.nombre as recurso_nombre,
+        s.id as sesion_id,
+        s.plan_id,
+        pt.objetivo as plan_objetivo,
+        pt.sesiones_plan,
+        pt.sesiones_completadas
+       FROM citas c
+       LEFT JOIN pacientes p ON c.paciente_id = p.id
+       LEFT JOIN profesionales pr ON c.profesional_id = pr.id
+       LEFT JOIN recursos r ON c.recurso_id = r.id
+       LEFT JOIN sesiones s ON s.cita_id = c.id
+       LEFT JOIN planes_tratamiento pt ON s.plan_id = pt.id
+       ${whereSQL}
+       ORDER BY c.inicio ASC`,
+      params
+    );
+
+    // Obtener resumen del día/período
+    const resumenParams = [inicio.toISOString(), fin.toISOString()];
+    const { rows: resumen } = await query(`
+      SELECT 
+        COUNT(*)::int as total,
+        COUNT(*) FILTER (WHERE estado = 'programada')::int as programadas,
+        COUNT(*) FILTER (WHERE estado = 'completada')::int as completadas,
+        COUNT(*) FILTER (WHERE estado = 'cancelada')::int as canceladas,
+        COUNT(*) FILTER (WHERE estado = 'en_progreso')::int as en_progreso
+      FROM citas
+      WHERE inicio >= $1 AND inicio <= $2
+    `, resumenParams);
+
+    // Formatear eventos para FullCalendar
+    const eventos = citas.map(cita => ({
+      id: cita.id,
+      title: cita.titulo || cita.paciente_nombre || 'Sin título',
+      start: cita.start,
+      end: cita.end,
+      backgroundColor: cita.color || '#3B82F6',
+      borderColor: cita.color || '#3B82F6',
+      extendedProps: {
+        estado: cita.estado,
+        paciente_id: cita.paciente_id,
+        paciente_nombre: cita.paciente_nombre,
+        paciente_telefono: cita.paciente_celular,
+        paciente_email: cita.paciente_email,
+        profesional_id: cita.profesional_id,
+        profesional_nombre: cita.profesional_nombre,
+        recurso_id: cita.recurso_id,
+        recurso_nombre: cita.recurso_nombre,
+        especialidad: cita.especialidad,
+        sesion_id: cita.sesion_id,
+        plan_id: cita.plan_id,
+        plan_objetivo: cita.plan_objetivo,
+        progreso: cita.sesiones_plan 
+          ? `${cita.sesiones_completadas || 0}/${cita.sesiones_plan}`
+          : null,
+        notas: cita.notas
+      }
+    }));
+
+    return res.json({
+      success: true,
+      data: {
+        eventos,
+        resumen: resumen[0],
+        periodo: {
+          inicio: inicio.toISOString(),
+          fin: fin.toISOString(),
+          vista: vista || 'dia'
+        }
+      }
+    });
+  } catch (err) {
+    console.error('getAgenda error', err);
+    return res.status(500).json({ success: false, message: 'Error al obtener agenda' });
   }
 };

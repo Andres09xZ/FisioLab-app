@@ -36,6 +36,9 @@ export const runMigrations = async () => {
     await query(`ALTER TABLE citas ADD COLUMN IF NOT EXISTS titulo TEXT`);
     await query(`ALTER TABLE citas ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'programada'`);
     await query(`ALTER TABLE citas ADD COLUMN IF NOT EXISTS notas TEXT`);
+  // Notification columns: enabled by default, and flag to mark sent
+  await query(`ALTER TABLE citas ADD COLUMN IF NOT EXISTS notification_enabled BOOLEAN DEFAULT true`);
+  await query(`ALTER TABLE citas ADD COLUMN IF NOT EXISTS notification_sent BOOLEAN DEFAULT false`);
     await query(`ALTER TABLE citas ADD COLUMN IF NOT EXISTS creado_en TIMESTAMPTZ DEFAULT now()`);
     await query(`ALTER TABLE citas ADD COLUMN IF NOT EXISTS actualizado_en TIMESTAMPTZ DEFAULT now()`);
 
@@ -397,6 +400,65 @@ export const runMigrations = async () => {
       await query(`CREATE INDEX IF NOT EXISTS idx_sesiones_profesional ON sesiones(profesional_id)`);
     } catch (e) {
       console.log('Index idx_sesiones_profesional already exists or error:', e.message);
+    }
+
+    // =====================================
+    // EJERCICIOS MODULE MIGRATIONS
+    // =====================================
+    
+    // Create ejercicios table
+    await query(`
+      CREATE TABLE IF NOT EXISTS ejercicios (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        categoria TEXT,
+        zona_corporal TEXT,
+        dificultad TEXT DEFAULT 'medio' CHECK (dificultad IN ('facil', 'medio', 'dificil')),
+        instrucciones TEXT,
+        imagen_url TEXT,
+        video_url TEXT,
+        activo BOOLEAN DEFAULT true,
+        creado_en TIMESTAMPTZ DEFAULT NOW(),
+        actualizado_en TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    
+    // Create plan_ejercicios table (many-to-many relationship)
+    await query(`
+      CREATE TABLE IF NOT EXISTS plan_ejercicios (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        plan_id UUID NOT NULL,
+        ejercicio_id UUID NOT NULL,
+        series INTEGER DEFAULT 3,
+        repeticiones INTEGER DEFAULT 10,
+        notas TEXT,
+        creado_en TIMESTAMPTZ DEFAULT NOW(),
+        actualizado_en TIMESTAMPTZ DEFAULT NOW(),
+        CONSTRAINT fk_plan_ejercicio_plan FOREIGN KEY (plan_id) 
+          REFERENCES planes_tratamiento(id) ON DELETE CASCADE,
+        CONSTRAINT fk_plan_ejercicio_ejercicio FOREIGN KEY (ejercicio_id) 
+          REFERENCES ejercicios(id) ON DELETE CASCADE,
+        CONSTRAINT unique_plan_ejercicio UNIQUE (plan_id, ejercicio_id)
+      );
+    `);
+
+    // Indexes for ejercicios
+    try {
+      await query(`CREATE INDEX IF NOT EXISTS idx_ejercicios_categoria ON ejercicios(categoria)`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_ejercicios_zona ON ejercicios(zona_corporal)`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_plan_ejercicios_plan ON plan_ejercicios(plan_id)`);
+    } catch (e) {
+      console.log('Ejercicios indexes already exist or error:', e.message);
+    }
+
+    // Add new states to estado_cita enum if not present
+    try {
+      await query(`ALTER TYPE estado_cita ADD VALUE IF NOT EXISTS 'no_asistio'`);
+      await query(`ALTER TYPE estado_cita ADD VALUE IF NOT EXISTS 'en_progreso'`);
+      await query(`ALTER TYPE estado_cita ADD VALUE IF NOT EXISTS 'completada'`);
+    } catch (e) {
+      // Enum values might already exist
     }
 
     console.log('✅ Migraciones completadas exitosamente');

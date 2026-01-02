@@ -5,10 +5,8 @@ import { useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardTopbar } from "@/components/dashboard/topbar"
 import { StatCard } from "@/components/dashboard/stat-card"
-import { UpcomingAppointments } from "@/components/dashboard/upcoming-appointments"
-import { MonthlyChart } from "@/components/dashboard/monthly-chart"
-import { PendingTasks } from "@/components/dashboard/pending-tasks"
 import { QuickActions } from "@/components/dashboard/quick-actions"
+import { AgendaDelDia } from "@/components/dashboard/agenda-del-dia"
 import { TrendingUp, UserCheck, Activity, CalendarCheck } from "lucide-react"
 
 export default function DashboardPage() {
@@ -30,15 +28,36 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/dashboard/resumen")
-      if (!response.ok) {
-        console.warn("Error en API dashboard/resumen:", response.status)
-        return
-      }
-      const data = await response.json()
-      if (data.success) {
-        setDashboardData(data.data)
-      }
+      const hoy = new Date().toISOString().split('T')[0]
+      const enUnaSemana = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      
+      // Obtener citas de hoy desde /api/agenda
+      const citasHoyRes = await fetch(`http://localhost:3001/api/agenda?fecha=${hoy}&vista=dia`)
+      const citasHoyData = await citasHoyRes.json()
+      const citasHoy = citasHoyData.success ? citasHoyData.data?.eventos?.length || 0 : 0
+      
+      // Obtener citas de la semana desde /api/citas/calendario
+      const citasSemanaRes = await fetch(`http://localhost:3001/api/citas/calendario?desde=${hoy}&hasta=${enUnaSemana}`)
+      const citasSemanaData = await citasSemanaRes.json()
+      const citasSemana = citasSemanaData.success ? citasSemanaData.data?.length || 0 : 0
+      
+      // Obtener pacientes activos
+      const pacientesRes = await fetch('http://localhost:3001/api/pacientes')
+      const pacientesData = await pacientesRes.json()
+      const pacientes = pacientesData.success ? pacientesData.data?.length || 0 : 0
+      
+      setDashboardData({
+        citas_hoy: citasHoy,
+        citas_semana: citasSemana,
+        pacientes: pacientes,
+        ingresos: 0 // Por ahora lo dejamos en 0
+      })
+      
+      console.log('📊 Estadísticas calculadas:', {
+        citasHoy,
+        citasSemana,
+        pacientes
+      })
     } catch (error) {
       console.error("Error al cargar datos del dashboard:", error)
     }
@@ -105,15 +124,14 @@ export default function DashboardPage() {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Quick Actions */}
-            <div className="lg:col-span-1">
-              <QuickActions />
+            {/* Left Column - Agenda del Día */}
+            <div className="lg:col-span-2">
+              <AgendaDelDia />
             </div>
 
-            {/* Right Column - Appointments and Chart */}
-            <div className="lg:col-span-2 space-y-6">
-              <UpcomingAppointments />
-              <MonthlyChart />
+            {/* Right Column - Quick Actions */}
+            <div className="lg:col-span-1">
+              <QuickActions />
             </div>
           </div>
         </main>

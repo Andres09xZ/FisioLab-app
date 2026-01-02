@@ -10,6 +10,7 @@ export const listPlanesPorPaciente = async (req, res) => {
 
     let sql = `SELECT pt.id,
                       pt.paciente_id,
+                      pt.evaluacion_id,
                       pt.objetivo,
                       pt.sesiones_plan,
                       pt.sesiones_completadas,
@@ -31,7 +32,15 @@ export const listPlanesPorPaciente = async (req, res) => {
                           'cita_fin', (SELECT fin FROM citas c WHERE c.id = s.cita_id)
                         )), '[]'::json)
                         FROM sesiones s WHERE s.plan_id = pt.id
-                      ) as sesiones
+                      ) as sesiones,
+                      (
+                        SELECT json_build_object(
+                          'id', ef.id,
+                          'diagnostico', ef.diagnostico,
+                          'fecha_evaluacion', ef.fecha_evaluacion
+                        )
+                        FROM evaluaciones_fisioterapeuticas ef WHERE ef.id = pt.evaluacion_id
+                      ) as evaluacion
                FROM planes_tratamiento pt
                WHERE pt.paciente_id = $1`;
 
@@ -55,15 +64,15 @@ export const listPlanesPorPaciente = async (req, res) => {
 export const createPlan = async (req, res) => {
   try {
     const { id } = req.params; // paciente id
-    const { objetivo, sesiones_plan, notas } = req.body;
+    const { objetivo, sesiones_plan, notas, evaluacion_id } = req.body;
     if (!objetivo || !sesiones_plan) {
       return res.status(400).json({ success: false, message: 'objetivo y sesiones_plan son requeridos' });
     }
     const { rows } = await query(
-      `INSERT INTO planes_tratamiento (paciente_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo)
-       VALUES ($1, $2, $3, 0, 'activo', $4, true)
-       RETURNING id, paciente_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en`,
-      [id, objetivo, sesiones_plan, notas || null]
+      `INSERT INTO planes_tratamiento (paciente_id, evaluacion_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo)
+       VALUES ($1, $2, $3, $4, 0, 'activo', $5, true)
+       RETURNING id, paciente_id, evaluacion_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en`,
+      [id, evaluacion_id || null, objetivo, sesiones_plan, notas || null]
     );
     return res.status(201).json({ success: true, data: rows[0] });
   } catch (err) {
@@ -75,7 +84,7 @@ export const createPlan = async (req, res) => {
 export const updatePlan = async (req, res) => {
   try {
     const { id } = req.params; // plan id
-    const { objetivo, sesiones_plan, notas, activo, estado } = req.body;
+    const { objetivo, sesiones_plan, notas, activo, estado, evaluacion_id } = req.body;
     
     // Validar estado si se proporciona
     const estadosValidos = ['activo', 'finalizado', 'cancelado'];
@@ -93,10 +102,11 @@ export const updatePlan = async (req, res) => {
         notas = COALESCE($4, notas),
         activo = COALESCE($5, activo),
         estado = COALESCE($6, estado),
+        evaluacion_id = COALESCE($7, evaluacion_id),
         actualizado_en = NOW()
       WHERE id = $1
-      RETURNING id, paciente_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en, actualizado_en`,
-      [id, objetivo || null, sesiones_plan || null, notas || null, typeof activo === 'boolean' ? activo : null, estado || null]
+      RETURNING id, paciente_id, evaluacion_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en, actualizado_en`,
+      [id, objetivo || null, sesiones_plan || null, notas || null, typeof activo === 'boolean' ? activo : null, estado || null, evaluacion_id || null]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Plan no encontrado' });
     return res.json({ success: true, data: rows[0] });
@@ -472,5 +482,79 @@ export const cambiarEstadoPlan = async (req, res) => {
   } catch (err) {
     console.error('cambiarEstadoPlan error', err);
     return res.status(500).json({ success: false, message: 'Error al cambiar estado del plan' });
+  }
+};
+
+// Eliminar plan de tratamiento y sus sesiones asociadas
+export const deletePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { force } = req.query; // Si force=true, elimina aunque tenga sesiones completadas
+
+    // Verificar que el plan existe
+    const planCheck = await query(
+      `SELECT pt.id, pt.estado, pt.sesiones_completadas,
+              (SELECT COUNT(*) FROM sesiones s WHERE s.plan_id = pt.id) as total_sesiones
+       FROM planes_tratamiento pt 
+       WHERE pt.id = $1`,
+      [id]
+    );
+
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Plan no encontrado' });
+    }
+
+    const plan = planCheck.rows[0];
+
+    // Prevenir eliminación si tiene sesiones completadas (a menos que force=true)
+    if (plan.sesiones_completadas > 0 && force !== 'true') {
+      return res.status(400).json({ 
+        success: false, 
+        message: `El plan tiene ${plan.sesiones_completadas} sesiones completadas. Use force=true para eliminar de todas formas.`,
+        sesiones_completadas: plan.sesiones_completadas,
+        total_sesiones: parseInt(plan.total_sesiones)
+      });
+    }
+
+    // Obtener citas asociadas a las sesiones del plan
+    const citasResult = await query(
+      `SELECT DISTINCT cita_id FROM sesiones WHERE plan_id = $1 AND cita_id IS NOT NULL`,
+      [id]
+    );
+    const citaIds = citasResult.rows.map(r => r.cita_id);
+
+    // Eliminar sesiones del plan
+    const sesionesEliminadas = await query(
+      `DELETE FROM sesiones WHERE plan_id = $1 RETURNING id`,
+      [id]
+    );
+
+    // Eliminar citas asociadas (si las hay)
+    let citasEliminadas = { rowCount: 0 };
+    if (citaIds.length > 0) {
+      citasEliminadas = await query(
+        `DELETE FROM citas WHERE id = ANY($1) RETURNING id`,
+        [citaIds]
+      );
+    }
+
+    // Eliminar el plan
+    const { rows } = await query(
+      `DELETE FROM planes_tratamiento WHERE id = $1 RETURNING id, paciente_id, objetivo`,
+      [id]
+    );
+
+    return res.json({ 
+      success: true, 
+      data: rows[0],
+      eliminados: {
+        sesiones: sesionesEliminadas.rowCount,
+        citas: citasEliminadas.rowCount
+      },
+      message: `Plan eliminado junto con ${sesionesEliminadas.rowCount} sesiones y ${citasEliminadas.rowCount} citas`
+    });
+  } catch (err) {
+    console.error('deletePlan error', err);
+    return res.status(500).json({ success: false, message: 'Error al eliminar plan', error: err.message });
   }
 };
