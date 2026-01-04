@@ -56,14 +56,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rutas
-app.use('/api', routes);
-
-// Swagger UI
+// Swagger UI - DEBE ir ANTES de las rutas de la API
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   swaggerOptions: { persistAuthorization: true },
   customSiteTitle: 'FisioLab API Docs'
 }));
+
+// Rutas de la API
+app.use('/api', routes);
 
 // Ruta raíz
 app.get('/', (req, res) => {
