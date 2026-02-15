@@ -187,9 +187,9 @@ export default function SesionesPage() {
   const getEstadoColor = (estado: string) => {
     switch (estado?.toLowerCase()) {
       case "completada":
-        return "bg-[#E6FFF5] text-[#0AA640] border-[#0AA640]/30"
+        return "bg-emerald-50 text-emerald-600 border-emerald-600/30"
       case "en_progreso":
-        return "bg-[#EBF5FF] text-[#056CF2] border-[#4BA4F2]/30"
+        return "bg-cyan-50 text-cyan-600 border-cyan-500/30"
       case "cancelada":
         return "bg-red-100 text-red-700 border-red-200"
       case "pendiente":
@@ -268,8 +268,8 @@ export default function SesionesPage() {
                     <p className="text-sm text-gray-600">Hoy</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.hoy}</p>
                   </div>
-                  <div className="p-3 bg-[#EBF5FF] rounded-full">
-                    <Calendar className="h-6 w-6 text-[#056CF2]" />
+                  <div className="p-3 bg-cyan-50 rounded-full">
+                    <Calendar className="h-6 w-6 text-cyan-600" />
                   </div>
                 </div>
               </CardContent>
@@ -282,8 +282,8 @@ export default function SesionesPage() {
                     <p className="text-sm text-gray-600">Esta Semana</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.semana}</p>
                   </div>
-                  <div className="p-3 bg-[#F5E6FF] rounded-full">
-                    <ClipboardList className="h-6 w-6 text-[#D466F2]" />
+                  <div className="p-3 bg-cyan-50 rounded-full">
+                    <ClipboardList className="h-6 w-6 text-cyan-600" />
                   </div>
                 </div>
               </CardContent>
@@ -296,8 +296,8 @@ export default function SesionesPage() {
                     <p className="text-sm text-gray-600">Completadas</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.completadas}</p>
                   </div>
-                  <div className="p-3 bg-[#E6FFF5] rounded-full">
-                    <CheckCircle2 className="h-6 w-6 text-[#0AA640]" />
+                  <div className="p-3 bg-emerald-50 rounded-full">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                   </div>
                 </div>
               </CardContent>
@@ -357,7 +357,7 @@ export default function SesionesPage() {
           {loading ? (
             <Card>
               <CardContent className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#056CF2]"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
               </CardContent>
             </Card>
           ) : Object.keys(sesionesPorPaciente).length === 0 ? (
@@ -394,7 +394,7 @@ export default function SesionesPage() {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Edit className="h-5 w-5 text-[#056CF2]" />
+                <Edit className="h-5 w-5 text-cyan-600" />
                 Editar Sesión
               </DialogTitle>
             </DialogHeader>
@@ -457,7 +457,7 @@ export default function SesionesPage() {
               <Button 
                 onClick={handleSaveEdit} 
                 disabled={saving}
-                className="bg-[#056CF2] hover:bg-[#0558C9]"
+                className="bg-cyan-600 hover:bg-cyan-700"
               >
                 {saving ? "Guardando..." : "Guardar Cambios"}
               </Button>
@@ -480,7 +480,7 @@ export default function SesionesPage() {
                 ¿Estás seguro de que deseas eliminar esta sesión? Esta acción no se puede deshacer.
               </p>
               {selectedSesion && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
+                <div className="mt-3 p-3 bg-gray-50 rounded text-sm">
                   <p><strong>Paciente:</strong> {selectedSesion.paciente_nombre}</p>
                   <p><strong>Estado:</strong> {selectedSesion.estado}</p>
                 </div>
@@ -539,7 +539,7 @@ function PacienteSesionesCard({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#D466F2] to-[#056CF2] flex items-center justify-center text-white font-semibold">
+            <div className="h-10 w-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-semibold">
               {pacienteNombre.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -578,7 +578,7 @@ function PacienteSesionesCard({
             {sesiones.map((sesion) => (
               <div
                 key={sesion.id}
-                className="p-4 border border-gray-200 rounded-lg hover:border-[#4BA4F2] transition-colors"
+                className="p-4 border border-gray-200 rounded hover:border-cyan-500 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -593,7 +593,7 @@ function PacienteSesionesCard({
                         </span>
                       )}
                       {sesion.plan_objetivo && (
-                        <span className="text-xs bg-[#F5E6FF] text-[#D466F2] px-2 py-1 rounded">
+                        <span className="text-xs bg-cyan-50 text-cyan-600 px-2 py-1 rounded">
                           {sesion.plan_objetivo}
                         </span>
                       )}
@@ -625,7 +625,7 @@ function PacienteSesionesCard({
                       variant="outline" 
                       size="sm"
                       onClick={() => onEdit(sesion)}
-                      className="hover:bg-[#EBF5FF] hover:border-[#056CF2]"
+                      className="hover:bg-cyan-50 hover:border-cyan-600"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>

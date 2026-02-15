@@ -271,7 +271,7 @@ export default function ProfesionalesPage() {
             </div>
             <Button 
               onClick={handleOpenCreate}
-              className="bg-[#D466F2] hover:bg-[#C050E0]"
+              className="bg-cyan-600 hover:bg-cyan-700"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Nuevo Profesional
@@ -283,8 +283,8 @@ export default function ProfesionalesPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#D466F2]/10 rounded-full">
-                    <Users className="h-6 w-6 text-[#D466F2]" />
+                  <div className="p-3 bg-cyan-600/10 rounded-full">
+                    <Users className="h-6 w-6 text-cyan-600" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Total</p>
@@ -296,12 +296,12 @@ export default function ProfesionalesPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#0AA640]/10 rounded-full">
-                    <UserCheck className="h-6 w-6 text-[#0AA640]" />
+                  <div className="p-3 bg-emerald-600/10 rounded-full">
+                    <UserCheck className="h-6 w-6 text-emerald-600" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Activos</p>
-                    <p className="text-2xl font-bold text-[#0AA640]">{stats.activos}</p>
+                    <p className="text-2xl font-bold text-emerald-600">{stats.activos}</p>
                   </div>
                 </div>
               </CardContent>
@@ -339,14 +339,14 @@ export default function ProfesionalesPage() {
                   <Button
                     variant={filterActivo === null ? "default" : "outline"}
                     onClick={() => setFilterActivo(null)}
-                    className={filterActivo === null ? "bg-[#056CF2] hover:bg-[#0458D9]" : ""}
+                    className={filterActivo === null ? "bg-cyan-600 hover:bg-cyan-700" : ""}
                   >
                     Todos
                   </Button>
                   <Button
                     variant={filterActivo === true ? "default" : "outline"}
                     onClick={() => setFilterActivo(true)}
-                    className={filterActivo === true ? "bg-[#0AA640] hover:bg-[#098A38]" : ""}
+                    className={filterActivo === true ? "bg-emerald-600 hover:bg-emerald-700" : ""}
                   >
                     Activos
                   </Button>
@@ -364,7 +364,7 @@ export default function ProfesionalesPage() {
           {/* Profesionales List */}
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-[#D466F2]" />
+              <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
             </div>
           ) : filteredProfesionales.length === 0 ? (
             <Card>
@@ -380,13 +380,13 @@ export default function ProfesionalesPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredProfesionales.map((profesional: ProfesionalExtendido) => (
-                <Card key={profesional.id} className="hover:shadow-lg transition-shadow">
+                <Card key={profesional.id} className="transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         {/* Avatar con color de agenda */}
                         <div 
-                          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-md"
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg"
                           style={{ backgroundColor: profesional.color_agenda || "#D466F2" }}
                         >
                           {profesional.nombre?.charAt(0) || ""}{profesional.apellido?.charAt(0) || ""}
@@ -397,7 +397,7 @@ export default function ProfesionalesPage() {
                           </h3>
                           <Badge 
                             variant={profesional.activo ? "default" : "secondary"} 
-                            className={profesional.activo ? "bg-[#0AA640]/10 text-[#0AA640] hover:bg-[#0AA640]/20" : ""}
+                            className={profesional.activo ? "bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600/20" : ""}
                           >
                             {profesional.activo ? "Activo" : "Inactivo"}
                           </Badge>
@@ -408,24 +408,24 @@ export default function ProfesionalesPage() {
                     <div className="space-y-2 text-sm text-gray-600 mb-4">
                       {profesional.especialidad && (
                         <div className="flex items-center gap-2">
-                          <Award className="h-4 w-4 text-[#D466F2]" />
+                          <Award className="h-4 w-4 text-cyan-600" />
                           {profesional.especialidad}
                         </div>
                       )}
                       {profesional.telefono && (
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-[#056CF2]" />
+                          <Phone className="h-4 w-4 text-cyan-600" />
                           {profesional.telefono}
                         </div>
                       )}
                       {profesional.email && (
                         <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-[#4BA4F2]" />
+                          <Mail className="h-4 w-4 text-cyan-500" />
                           <span className="truncate">{profesional.email}</span>
                         </div>
                       )}
                       {profesional.comision_porcentaje !== undefined && profesional.comision_porcentaje > 0 && (
-                        <div className="text-xs bg-[#04D9D9]/10 text-[#04D9D9] px-2 py-1 rounded inline-block">
+                        <div className="text-xs bg-cyan-500/10 text-cyan-500 px-2 py-1 rounded inline-block">
                           Comisión: {profesional.comision_porcentaje}%
                         </div>
                       )}
@@ -588,7 +588,7 @@ export default function ProfesionalesPage() {
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="bg-[#D466F2] hover:bg-[#C050E0]"
+                className="bg-cyan-600 hover:bg-cyan-700"
               >
                 {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {editingProfesional ? "Guardar Cambios" : "Crear Profesional"}

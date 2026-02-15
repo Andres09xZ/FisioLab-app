@@ -10,6 +10,7 @@ export const listEvaluaciones = async (req, res) => {
     let sql = `SELECT 
       e.id, e.paciente_id, e.fecha_evaluacion,
       e.escala_eva,
+      e.especialidad,
       e.motivo_consulta, e.desde_cuando,
       e.asimetria, e.atrofias_musculares, e.inflamacion, e.equimosis, e.edema, e.otros_hallazgos, e.observaciones_inspeccion,
       e.contracturas, e.irradiacion, e.hacia_donde, e.intensidad, e.sensacion,
@@ -62,6 +63,8 @@ export const createEvaluacion = async (req, res) => {
     const {
       paciente_id,
       fecha_evaluacion,
+      // Especialidad
+      especialidad,
       // Escala EVA (0-10)
       escala_eva,
       // 2. Motivo de la consulta
@@ -95,6 +98,15 @@ export const createEvaluacion = async (req, res) => {
       return res.status(400).json({ success: false, message: 'paciente_id es requerido' });
     }
     
+    // Validar especialidad si se proporciona
+    const especialidadesValidas = ['Traumatologia', 'Neurologia', 'Deportologia', 'Pediatria', 'Geriatria'];
+    if (especialidad && !especialidadesValidas.includes(especialidad)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `especialidad debe ser una de: ${especialidadesValidas.join(', ')}` 
+      });
+    }
+    
     // Validar escala_eva (0-10)
     if (escala_eva !== undefined && escala_eva !== null) {
       const evaNum = parseInt(escala_eva);
@@ -112,6 +124,7 @@ export const createEvaluacion = async (req, res) => {
     const { rows } = await query(
       `INSERT INTO evaluaciones_fisioterapeuticas (
         paciente_id, fecha_evaluacion,
+        especialidad,
         escala_eva,
         motivo_consulta, desde_cuando,
         asimetria, atrofias_musculares, inflamacion, equimosis, edema, otros_hallazgos, observaciones_inspeccion,
@@ -120,16 +133,18 @@ export const createEvaluacion = async (req, res) => {
         diagnostico, tratamientos_anteriores
       ) VALUES (
         $1, COALESCE($2, NOW()),
-        $3,
-        $4, $5,
-        $6, $7, $8, $9, $10, $11, $12,
-        $13, $14, $15, $16, $17,
-        $18, $19, $20, $21,
-        $22, $23
+        $3::especialidad_fisioterapia,
+        $4,
+        $5, $6,
+        $7, $8, $9, $10, $11, $12, $13,
+        $14, $15, $16, $17, $18,
+        $19, $20, $21, $22,
+        $23, $24
       )
       RETURNING *`,
       [
         paciente_id, fecha_evaluacion || null,
+        especialidad || null,
         escala_eva || null,
         motivo_consulta || null, desde_cuando || null,
         asimetria || null, atrofias_musculares || null, inflamacion || null, equimosis || null, edema || null, otros_hallazgos || null, observaciones_inspeccion || null,
@@ -151,6 +166,7 @@ export const updateEvaluacion = async (req, res) => {
     const { id } = req.params;
     const {
       fecha_evaluacion,
+      especialidad,
       escala_eva,
       motivo_consulta, desde_cuando,
       asimetria, atrofias_musculares, inflamacion, equimosis, edema, otros_hallazgos, observaciones_inspeccion,
@@ -158,6 +174,15 @@ export const updateEvaluacion = async (req, res) => {
       limitacion_izquierdo, limitacion_derecho, crujidos, amplitud_movimientos,
       diagnostico, tratamientos_anteriores
     } = req.body;
+    
+    // Validar especialidad si se proporciona
+    const especialidadesValidas = ['Traumatologia', 'Neurologia', 'Deportologia', 'Pediatria', 'Geriatria'];
+    if (especialidad && !especialidadesValidas.includes(especialidad)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `especialidad debe ser una de: ${especialidadesValidas.join(', ')}` 
+      });
+    }
     
     // Validar escala_eva (0-10) si se envía
     if (escala_eva !== undefined && escala_eva !== null) {
@@ -170,33 +195,35 @@ export const updateEvaluacion = async (req, res) => {
     const { rows } = await query(
       `UPDATE evaluaciones_fisioterapeuticas SET
         fecha_evaluacion = COALESCE($2, fecha_evaluacion),
-        escala_eva = COALESCE($3, escala_eva),
-        motivo_consulta = COALESCE($4, motivo_consulta),
-        desde_cuando = COALESCE($5, desde_cuando),
-        asimetria = COALESCE($6, asimetria),
-        atrofias_musculares = COALESCE($7, atrofias_musculares),
-        inflamacion = COALESCE($8, inflamacion),
-        equimosis = COALESCE($9, equimosis),
-        edema = COALESCE($10, edema),
-        otros_hallazgos = COALESCE($11, otros_hallazgos),
-        observaciones_inspeccion = COALESCE($12, observaciones_inspeccion),
-        contracturas = COALESCE($13, contracturas),
-        irradiacion = COALESCE($14, irradiacion),
-        hacia_donde = COALESCE($15, hacia_donde),
-        intensidad = COALESCE($16, intensidad),
-        sensacion = COALESCE($17, sensacion),
-        limitacion_izquierdo = COALESCE($18, limitacion_izquierdo),
-        limitacion_derecho = COALESCE($19, limitacion_derecho),
-        crujidos = COALESCE($20, crujidos),
-        amplitud_movimientos = COALESCE($21, amplitud_movimientos),
-        diagnostico = COALESCE($22, diagnostico),
-        tratamientos_anteriores = COALESCE($23, tratamientos_anteriores),
+        especialidad = COALESCE($3::especialidad_fisioterapia, especialidad),
+        escala_eva = COALESCE($4, escala_eva),
+        motivo_consulta = COALESCE($5, motivo_consulta),
+        desde_cuando = COALESCE($6, desde_cuando),
+        asimetria = COALESCE($7, asimetria),
+        atrofias_musculares = COALESCE($8, atrofias_musculares),
+        inflamacion = COALESCE($9, inflamacion),
+        equimosis = COALESCE($10, equimosis),
+        edema = COALESCE($11, edema),
+        otros_hallazgos = COALESCE($12, otros_hallazgos),
+        observaciones_inspeccion = COALESCE($13, observaciones_inspeccion),
+        contracturas = COALESCE($14, contracturas),
+        irradiacion = COALESCE($15, irradiacion),
+        hacia_donde = COALESCE($16, hacia_donde),
+        intensidad = COALESCE($17, intensidad),
+        sensacion = COALESCE($18, sensacion),
+        limitacion_izquierdo = COALESCE($19, limitacion_izquierdo),
+        limitacion_derecho = COALESCE($20, limitacion_derecho),
+        crujidos = COALESCE($21, crujidos),
+        amplitud_movimientos = COALESCE($22, amplitud_movimientos),
+        diagnostico = COALESCE($23, diagnostico),
+        tratamientos_anteriores = COALESCE($24, tratamientos_anteriores),
         actualizado_en = NOW()
       WHERE id = $1
       RETURNING *`,
       [
         id,
         fecha_evaluacion || null,
+        especialidad || null,
         escala_eva || null,
         motivo_consulta || null, desde_cuando || null,
         asimetria || null, atrofias_musculares || null, inflamacion || null, equimosis || null, edema || null, otros_hallazgos || null, observaciones_inspeccion || null,

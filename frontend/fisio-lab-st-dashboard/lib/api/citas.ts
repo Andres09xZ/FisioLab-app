@@ -43,6 +43,10 @@ export interface CalendarioEvent {
   paciente_id?: string;
   profesional_id?: string;
   notas?: string;
+  // IDs adicionales para edición
+  recurso_id?: string;
+  plan_id?: string;
+  sesion_id?: string;
   // Datos del paciente
   paciente_nombre?: string;
   paciente_telefono?: string;
@@ -962,6 +966,92 @@ export async function actualizarSesion(
     return { success: true, data: json.data || json };
   } catch (error) {
     console.error('actualizarSesion error:', error);
+    return { success: false, error: 'Error de conexión' };
+  }
+}
+
+/**
+ * POST /api/v2/planes/:id/generar-sesiones
+ * Genera sesiones con Smart Scheduling V2 (detección de conflictos)
+ */
+export async function generarSesionesV2(
+  planId: string,
+  payload: GenerarSesionesPayload
+): Promise<{
+  success: boolean;
+  data?: {
+    planId: string;
+    sesionesGeneradas: number;
+    sesiones: any[];
+    conflictos: Array<{
+      fecha: string;
+      numeroSesion: number;
+      motivo: string;
+      sugerencia: string;
+    }>;
+    mensaje: string;
+  };
+  error?: string;
+}> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fisiolab_token') : null;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE_URL}/v2/planes/${planId}/generar-sesiones`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        fecha_inicio: payload.fecha_inicio,
+        dias_semana: payload.dias_semana,
+        hora: payload.hora,
+        profesional_id: payload.profesional_id,
+        duracion_minutos: payload.duracion_minutos,
+      })
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: json.message || json.errors?.map((e: any) => e.message).join(', ') || 'Error al generar sesiones'
+      };
+    }
+
+    return { success: true, data: json.data };
+  } catch (error) {
+    console.error('generarSesionesV2 error:', error);
+    return { success: false, error: 'Error de conexión' };
+  }
+}
+
+/**
+ * GET /api/v2/planes/:id/sesiones
+ * Obtiene sesiones V2 de un plan
+ */
+export async function obtenerSesionesPlanV2(
+  planId: string,
+  estado?: string
+): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fisiolab_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const url = new URL(`${API_BASE_URL}/v2/planes/${planId}/sesiones`);
+    if (estado) url.searchParams.append('estado', estado);
+
+    const res = await fetch(url.toString(), { headers });
+    const json = await res.json();
+
+    if (!res.ok) {
+      return { success: false, error: json.message || 'Error al obtener sesiones' };
+    }
+
+    return { success: true, data: json.data };
+  } catch (error) {
+    console.error('obtenerSesionesPlanV2 error:', error);
     return { success: false, error: 'Error de conexión' };
   }
 }

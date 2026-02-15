@@ -247,7 +247,8 @@ const { disponible, conflictos } = await response.json();
   "objetivo": "Recuperar movilidad en hombro derecho",
   "sesiones_plan": 12,
   "notas": "Paciente con lesión deportiva",
-  "evaluacion_id": "uuid-opcional"  // Asociar a una evaluación
+  "evaluacion_id": "uuid-opcional",  // Asociar a una evaluación
+  "especialidad": "Deportologia"     // ✨ Opcional: Traumatologia, Neurologia, Deportologia, Pediatria, Geriatria
 }
 ```
 
@@ -259,6 +260,7 @@ const { disponible, conflictos } = await response.json();
     "id": "uuid",
     "paciente_id": "uuid",
     "evaluacion_id": "uuid",  // Si se proporcionó
+    "especialidad": "Deportologia",  // ✨ Nuevo campo
     "objetivo": "Recuperar movilidad...",
     "sesiones_plan": 12,
     "sesiones_completadas": 0,
@@ -278,10 +280,12 @@ const { disponible, conflictos } = await response.json();
   "data": [{
     "id": "uuid",
     "evaluacion_id": "uuid",
+    "especialidad": "Neurologia",  // ✨ Nuevo campo
     "objetivo": "Rehabilitación lumbar",
     "sesiones_plan": 10,
     "evaluacion": {  // Datos de la evaluación asociada
       "id": "uuid",
+      "especialidad": "Neurologia",  // ✨ Especialidad de la evaluación
       "diagnostico": "Lumbalgia mecánica",
       "fecha_evaluacion": "2024-01-10T..."
     },

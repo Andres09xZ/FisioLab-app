@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
+import { EspecialidadSelect } from "@/components/ui/especialidad-select"
 
 interface EvaluacionModalProps {
   open: boolean
@@ -21,6 +22,7 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
   const [loading, setLoading] = useState(false)
   
   const [motivoConsulta, setMotivoConsulta] = useState("")
+  const [especialidad, setEspecialidad] = useState<string | null>(null)
   const [enfermedadActual, setEnfermedadActual] = useState("")
   const [objetivoPaciente, setObjetivoPaciente] = useState("")
   const [escalaEVA, setEscalaEVA] = useState<number>(0)
@@ -70,6 +72,7 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
         body: JSON.stringify({
           paciente_id: pacienteId,
           motivo_consulta: motivoConsulta,
+          especialidad: especialidad,
           enfermedad_actual: enfermedadActual,
           objetivo_paciente: objetivoPaciente,
           escala_eva: escalaEVA,
@@ -109,6 +112,7 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
 
   const resetForm = () => {
     setMotivoConsulta("")
+    setEspecialidad(null)
     setEnfermedadActual("")
     setObjetivoPaciente("")
     setEscalaEVA(0)
@@ -146,6 +150,21 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
             />
           </div>
 
+          {/* Especialidad */}
+          <div className="space-y-2">
+            <Label htmlFor="especialidad" className="text-base font-semibold">
+              Especialidad <span className="text-gray-500 text-sm font-normal">(Opcional)</span>
+            </Label>
+            <EspecialidadSelect
+              value={especialidad}
+              onChange={setEspecialidad}
+              placeholder="Seleccionar especialidad"
+            />
+            <p className="text-xs text-gray-500">
+              💡 Selecciona la especialidad de fisioterapia más adecuada para esta evaluación
+            </p>
+          </div>
+
           {/* Enfermedad Actual */}
           <div className="space-y-2">
             <Label htmlFor="enfermedadActual" className="text-base font-semibold">
@@ -174,9 +193,9 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
           </div>
 
           {/* Escala EVA (Escala Visual Analógica) */}
-          <div className="space-y-4 p-6 bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
+          <div className="space-y-4 p-6 bg-cyan-50 rounded border border-cyan-200">
             <div className="text-center">
-              <h3 className="font-bold text-xl text-blue-900 mb-1">ESCALA VISUAL ANALÓGICA</h3>
+              <h3 className="font-bold text-xl text-cyan-900 mb-1">ESCALA VISUAL ANALÓGICA</h3>
               <p className="text-sm text-gray-600">Seleccione el nivel de dolor del paciente</p>
             </div>
             
@@ -201,7 +220,7 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
               </div>
 
               {/* Barra de colores */}
-              <div className="relative h-12 rounded-lg overflow-hidden shadow-inner">
+              <div className="relative h-12 rounded overflow-hidden">
                 <div className="absolute inset-0 flex">
                   <div className="flex-1 bg-green-500"></div>
                   <div className="flex-1 bg-green-400"></div>
@@ -233,8 +252,8 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
                     onClick={() => setEscalaEVA(num)}
                     className={`w-8 h-8 rounded-full font-bold text-sm transition-all ${
                       escalaEVA === num
-                        ? "bg-blue-600 text-white scale-125 shadow-lg"
-                        : "bg-white text-gray-700 hover:bg-blue-100 border border-gray-300"
+                        ? "bg-cyan-600 text-white scale-125"
+                        : "bg-white text-slate-700 hover:bg-cyan-50 border border-slate-300"
                     }`}
                   >
                     {num}
@@ -275,7 +294,7 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
           </div>
 
           {/* Sección de Evaluación Física */}
-          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+          <div className="space-y-4 p-4 bg-slate-50 rounded border border-slate-200">
             <h3 className="font-semibold text-lg">Evaluación Física</h3>
             
             {/* Inspección */}
@@ -367,7 +386,7 @@ export function EvaluacionModal({ open, onOpenChange, pacienteId, pacienteNombre
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-cyan-600 hover:bg-cyan-700"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Guardar Evaluación

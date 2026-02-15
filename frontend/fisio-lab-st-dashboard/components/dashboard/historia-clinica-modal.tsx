@@ -175,8 +175,8 @@ export function HistoriaClinicaModal({ open, onOpenChange, pacienteId, pacienteN
 
         <div className="space-y-6 py-4">
           {/* Información Laboral */}
-          <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="font-semibold text-lg text-blue-900">Información Laboral</h3>
+          <div className="space-y-4 p-4 bg-cyan-50 rounded border border-cyan-200">
+            <h3 className="font-semibold text-lg text-cyan-900">Información Laboral</h3>
             
             <div className="grid grid-cols-2 gap-4">
               {/* Profesión */}
@@ -206,7 +206,7 @@ export function HistoriaClinicaModal({ open, onOpenChange, pacienteId, pacienteN
           {/* Antecedentes Patológicos */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">Antecedentes Patológicos</Label>
-            <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+            <div className="space-y-3 p-4 bg-slate-50 rounded border border-slate-200">
               {ANTECEDENTES_OPTIONS.map((antecedente) => (
                 <div key={antecedente.id} className="space-y-2">
                   <div className="flex items-center space-x-2">

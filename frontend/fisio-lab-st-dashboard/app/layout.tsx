@@ -4,6 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/toaster"
 import { QueryProvider } from "@/components/query-provider"
+import { SessionReminder } from "@/components/notifications/session-reminder"
+import { PostSessionPrompt } from "@/components/notifications/post-session-prompt"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -40,12 +42,15 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
       </head>
       <body className={`font-sans antialiased`}>
         <QueryProvider>
           {children}
         </QueryProvider>
+        <SessionReminder />
+        <PostSessionPrompt />
         <Analytics />
         <Toaster />
       </body>

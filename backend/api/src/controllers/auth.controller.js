@@ -3,9 +3,9 @@ import jwt from 'jsonwebtoken';
 import { query } from '../config/database.js';
 
 // Generar token JWT
-const generateToken = (userId) => {
+const generateToken = (userId, rol = 'PACIENTE') => {
   return jwt.sign(
-    { userId },
+    { userId, rol },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
@@ -14,7 +14,7 @@ const generateToken = (userId) => {
 // POST /api/auth/register
 export const register = async (req, res) => {
   try {
-    const { email, password, nombre, apellido, avatar_url } = req.body;
+    const { email, password, nombre, apellido, avatar_url, rol } = req.body;
 
     // Validaciones
     if (!email || !password || !nombre || !apellido) {
@@ -23,6 +23,12 @@ export const register = async (req, res) => {
         message: 'Todos los campos son requeridos: email, password, nombre, apellido'
       });
     }
+
+    // Validar que el rol sea válido (si se proporciona)
+    const rolesValidos = ['DOCTOR', 'PACIENTE', 'FISIOTERAPEUTA', 'ADMIN'];
+    const rolFinal = rol && rolesValidos.includes(rol.toUpperCase()) 
+      ? rol.toUpperCase() 
+      : 'PACIENTE'; // Rol por defecto si no se especifica
 
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,18 +64,18 @@ export const register = async (req, res) => {
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
-    // Insertar el nuevo usuario
+    // Insertar el nuevo usuario con rol
     const result = await query(
-      `INSERT INTO usuarios (email, password_hash, nombre, apellido, avatar_url)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, email, nombre, apellido, avatar_url, created_at`,
-      [email.toLowerCase(), password_hash, nombre, apellido, avatar_url || null]
+      `INSERT INTO usuarios (email, password_hash, nombre, apellido, avatar_url, rol, activo)
+       VALUES ($1, $2, $3, $4, $5, $6, true)
+       RETURNING id, email, nombre, apellido, avatar_url, rol, created_at`,
+      [email.toLowerCase(), password_hash, nombre, apellido, avatar_url || null, rolFinal]
     );
 
     const newUser = result.rows[0];
 
-    // Generar token
-    const token = generateToken(newUser.id);
+    // Generar token incluyendo el rol
+    const token = generateToken(newUser.id, newUser.rol);
 
     res.status(201).json({
       success: true,
@@ -81,6 +87,7 @@ export const register = async (req, res) => {
           nombre: newUser.nombre,
           apellido: newUser.apellido,
           avatar_url: newUser.avatar_url,
+          rol: newUser.rol,
           created_at: newUser.created_at
         },
         token
@@ -111,7 +118,7 @@ export const login = async (req, res) => {
 
     // Buscar usuario por email
     const result = await query(
-      'SELECT id, email, password_hash, nombre, apellido, avatar_url FROM usuarios WHERE email = $1',
+      'SELECT id, email, password_hash, nombre, apellido, avatar_url, rol FROM usuarios WHERE email = $1',
       [email.toLowerCase()]
     );
 
@@ -134,8 +141,8 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generar token
-    const token = generateToken(user.id);
+    // Generar token incluyendo el rol
+    const token = generateToken(user.id, user.rol);
 
     res.json({
       success: true,
@@ -146,7 +153,8 @@ export const login = async (req, res) => {
           email: user.email,
           nombre: user.nombre,
           apellido: user.apellido,
-          avatar_url: user.avatar_url
+          avatar_url: user.avatar_url,
+          rol: user.rol
         },
         token
       }

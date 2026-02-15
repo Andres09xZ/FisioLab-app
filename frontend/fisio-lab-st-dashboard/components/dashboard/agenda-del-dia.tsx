@@ -303,7 +303,7 @@ export function AgendaDelDia() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-[#056CF2]" />
+              <Calendar className="h-5 w-5 text-cyan-600" />
               Agenda de Hoy
             </CardTitle>
             <div className="text-sm text-gray-600">
@@ -317,7 +317,7 @@ export function AgendaDelDia() {
               size="sm"
               variant={filter === 'todas' ? 'default' : 'outline'}
               onClick={() => setFilter('todas')}
-              className={filter === 'todas' ? 'bg-[#056CF2]' : ''}
+              className={filter === 'todas' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
             >
               Todas ({stats.total})
             </Button>
@@ -325,7 +325,7 @@ export function AgendaDelDia() {
               size="sm"
               variant={filter === 'pendientes' ? 'default' : 'outline'}
               onClick={() => setFilter('pendientes')}
-              className={filter === 'pendientes' ? 'bg-[#056CF2]' : ''}
+              className={filter === 'pendientes' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
             >
               Pendientes ({stats.pendientes})
             </Button>
@@ -333,7 +333,7 @@ export function AgendaDelDia() {
               size="sm"
               variant={filter === 'completadas' ? 'default' : 'outline'}
               onClick={() => setFilter('completadas')}
-              className={filter === 'completadas' ? 'bg-[#056CF2]' : ''}
+              className={filter === 'completadas' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
             >
               Completadas ({stats.completadas})
             </Button>
@@ -341,7 +341,7 @@ export function AgendaDelDia() {
               size="sm"
               variant={filter === 'canceladas' ? 'default' : 'outline'}
               onClick={() => setFilter('canceladas')}
-              className={filter === 'canceladas' ? 'bg-[#056CF2]' : ''}
+              className={filter === 'canceladas' ? 'bg-cyan-600 hover:bg-cyan-700' : ''}
             >
               Canceladas ({stats.canceladas})
             </Button>
@@ -351,7 +351,7 @@ export function AgendaDelDia() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#056CF2]"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
             </div>
           ) : citasFiltradas.length === 0 ? (
             <div className="text-center py-12">
@@ -395,14 +395,14 @@ export function AgendaDelDia() {
                 return (
                   <div
                     key={cita.id}
-                    className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                    className={`border rounded p-4 hover:bg-slate-50 transition-colors ${
                       estadoCita === 'en_curso' ? 'border-green-500 border-2' : ''
                     }`}
                   >
                     <div className="flex items-start gap-4">
                       {/* Avatar */}
                       <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-[#056CF2] text-white">
+                        <AvatarFallback className="bg-cyan-600 text-white">
                           {iniciales}
                         </AvatarFallback>
                       </Avatar>
@@ -594,7 +594,7 @@ export function AgendaDelDia() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Edit3 className="h-5 w-5 text-[#056CF2]" />
+              <Edit3 className="h-5 w-5 text-cyan-600" />
               Reprogramar Cita
             </DialogTitle>
           </DialogHeader>
@@ -634,7 +634,7 @@ export function AgendaDelDia() {
             <Button
               onClick={handleReprogramar}
               disabled={actionLoading || !nuevaFecha || !nuevaHora}
-              className="bg-[#056CF2] hover:bg-[#0558C9]"
+              className="bg-cyan-600 hover:bg-cyan-700"
             >
               {actionLoading ? "Reprogramando..." : "Reprogramar Cita"}
             </Button>

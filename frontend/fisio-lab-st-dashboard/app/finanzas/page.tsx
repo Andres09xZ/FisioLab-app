@@ -171,7 +171,7 @@ export default function FinanzasPage() {
                       {pagos.map((pago) => (
                         <div
                           key={pago.id}
-                          className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                          className="p-4 border border-gray-200 rounded transition-shadow"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -227,7 +227,7 @@ export default function FinanzasPage() {
                       {certificados.map((certificado) => (
                         <div
                           key={certificado.id}
-                          className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                          className="p-4 border border-gray-200 rounded transition-shadow"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">

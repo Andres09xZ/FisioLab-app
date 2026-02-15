@@ -17,9 +17,9 @@ export const authenticateToken = async (req, res, next) => {
     // Verificar el token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Buscar el usuario en la base de datos
+    // Buscar el usuario en la base de datos CON EL ROL
     const result = await query(
-      'SELECT id, email, nombre, apellido, avatar_url FROM usuarios WHERE id = $1',
+      'SELECT id, email, nombre, apellido, avatar_url, rol, activo FROM usuarios WHERE id = $1',
       [decoded.userId]
     );
 
@@ -30,7 +30,15 @@ export const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Agregar el usuario al request
+    // Verificar que el usuario está activo
+    if (!result.rows[0].activo) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario inactivo'
+      });
+    }
+
+    // Agregar el usuario al request (ahora incluye el rol)
     req.user = result.rows[0];
     next();
   } catch (error) {
@@ -54,3 +62,46 @@ export const authenticateToken = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * Middleware para validar que el usuario tiene uno de los roles permitidos
+ * @param {string[]} rolesPermitidos - Array de roles permitidos (ej: ['DOCTOR', 'ADMIN'])
+ * @returns {Function} Middleware function
+ */
+export const requireRole = (rolesPermitidos) => {
+  return (req, res, next) => {
+    // Verificar que el usuario está autenticado
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no autenticado'
+      });
+    }
+
+    // Verificar que el usuario tiene un rol permitido
+    if (!rolesPermitidos.includes(req.user.rol)) {
+      return res.status(403).json({
+        success: false,
+        message: `Acceso denegado. Roles permitidos: ${rolesPermitidos.join(', ')}`,
+        rolActual: req.user.rol
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Middleware específico para validar rol DOCTOR
+ */
+export const requireDoctor = requireRole(['DOCTOR']);
+
+/**
+ * Middleware específico para validar rol FISIOTERAPEUTA
+ */
+export const requireFisioterapeuta = requireRole(['FISIOTERAPEUTA']);
+
+/**
+ * Middleware para validar DOCTOR o FISIOTERAPEUTA
+ */
+export const requireDoctorOrFisioterapeuta = requireRole(['DOCTOR', 'FISIOTERAPEUTA']);

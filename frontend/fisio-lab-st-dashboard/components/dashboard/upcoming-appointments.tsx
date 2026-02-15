@@ -22,7 +22,7 @@ export function UpcomingAppointments() {
           {appointments.map((apt, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100"
+              className="flex items-center gap-4 p-4 rounded bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-100"
             >
               <div className="w-1 h-12 rounded-full" style={{ backgroundColor: apt.color }} />
               <div className="flex-1">

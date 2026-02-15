@@ -201,6 +201,7 @@ const escalaEVAInfo = {
   "paciente_id": "uuid",
   "fecha_evaluacion": "2025-12-15T10:30:00Z", // opcional, default NOW()
   "escala_eva": 5,                             // ✨ NUEVO (0-10, opcional)
+  "especialidad": "Traumatologia",            // ✨ NUEVO (opcional)
   "motivo_consulta": "Dolor lumbar crónico",
   "desde_cuando": "3 meses",
   "asimetria": "Leve escoliosis",
@@ -217,6 +218,21 @@ const escalaEVAInfo = {
 {
   "success": false,
   "message": "escala_eva debe ser un número entre 0 y 10"
+}
+```
+
+**Especialidades válidas:**
+- `Traumatologia`
+- `Neurologia`
+- `Deportologia`
+- `Pediatria`
+- `Geriatria`
+
+Si se envía una especialidad no válida, retornará error 400:
+```json
+{
+  "success": false,
+  "message": "especialidad debe ser una de: Traumatologia, Neurologia, Deportologia, Pediatria, Geriatria"
 }
 ```
 

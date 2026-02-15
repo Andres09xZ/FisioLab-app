@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { X, Calendar, Clock, User, AlertCircle, Loader2, Target, CheckCircle2, Info, Bell } from "lucide-react"
+import { X, Calendar, Clock, User, AlertCircle, Loader2, Target, CheckCircle2, Info, Bell, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,6 +29,7 @@ import {
 } from "@/lib/api/citas"
 import { programarNotificacionCita } from "@/lib/api/notificaciones"
 import { useToast } from "@/hooks/use-toast"
+import type { CalendarioEvent } from "@/lib/api/citas"
 
 interface CitaModalProps {
   open: boolean
@@ -38,6 +39,7 @@ interface CitaModalProps {
   profesionalId?: string
   planId?: string
   fechaInicio?: Date
+  citaToEdit?: CalendarioEvent | null
 }
 
 export function CitaModal({
@@ -47,7 +49,8 @@ export function CitaModal({
   pacienteId: pacienteIdProp,
   profesionalId: profesionalIdProp,
   planId: planIdProp,
-  fechaInicio
+  fechaInicio,
+  citaToEdit
 }: CitaModalProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -76,6 +79,9 @@ export function CitaModal({
   const [titulo, setTitulo] = useState("")
   const [notas, setNotas] = useState("")
   const [enviarNotificacion, setEnviarNotificacion] = useState(true) // Notificación activada por defecto
+  
+  // Búsqueda de pacientes
+  const [searchPaciente, setSearchPaciente] = useState("")
 
   // Disponibilidad
   const [disponibilidadVerificada, setDisponibilidadVerificada] = useState(false)
@@ -86,15 +92,61 @@ export function CitaModal({
     if (open) {
       loadPacientes()
       loadProfesionales()
-      // Reset form
-      if (!planIdProp) {
-        setPlanes([])
-        setPlanId("")
-        setSesionesPendientes([])
-        setSesionId("")
+      
+      // Si estamos editando, cargar los datos de la cita
+      if (citaToEdit) {
+        console.log('Editing cita:', citaToEdit)
+        setPacienteId(citaToEdit.paciente_id || "")
+        setProfesionalId(citaToEdit.profesional_id || "")
+        
+        // Extraer fecha y hora del inicio (FullCalendar usa start/end)
+        const inicioDate = new Date(citaToEdit.start)
+        const finDate = new Date(citaToEdit.end)
+        
+        // Validar que las fechas sean válidas
+        if (isNaN(inicioDate.getTime()) || isNaN(finDate.getTime())) {
+          console.error('Invalid date format:', { start: citaToEdit.start, end: citaToEdit.end })
+          toast({
+            variant: "destructive",
+            title: "❌ Error",
+            description: "Formato de fecha inválido en la cita"
+          })
+          return
+        }
+        
+        const duracion = Math.round((finDate.getTime() - inicioDate.getTime()) / (1000 * 60))
+        
+        setFecha(format(inicioDate, "yyyy-MM-dd"))
+        setHoraInicio(format(inicioDate, "HH:mm"))
+        setDuracionMinutos(duracion.toString())
+        setTitulo(citaToEdit.title || "")
+        setNotas(citaToEdit.notas || "")
+        
+        if (citaToEdit.plan_id) {
+          setPlanId(citaToEdit.plan_id)
+        }
+        if (citaToEdit.sesion_id) {
+          setSesionId(citaToEdit.sesion_id)
+        }
+      } else {
+        // Reset form para nueva cita
+        if (!pacienteIdProp) setPacienteId("")
+        if (!profesionalIdProp) setProfesionalId("")
+        if (!planIdProp) {
+          setPlanes([])
+          setPlanId("")
+          setSesionesPendientes([])
+          setSesionId("")
+        }
+        setFecha(fechaInicio ? format(fechaInicio, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"))
+        setHoraInicio("09:00")
+        setDuracionMinutos("60")
+        setTitulo("")
+        setNotas("")
+        setEnviarNotificacion(true)
       }
     }
-  }, [open])
+  }, [open, citaToEdit])
 
   // Load planes when paciente changes
   useEffect(() => {
@@ -236,7 +288,7 @@ export function CitaModal({
     setValidating(false)
   }
 
-  // Crear cita (y asignar a sesión si corresponde)
+  // Crear o actualizar cita
   const handleSubmit = async () => {
     if (!disponibilidadVerificada) {
       toast({
@@ -272,8 +324,7 @@ export function CitaModal({
         tituloFinal = 'Cita médica'
       }
 
-      // 1. Crear la cita con zona horaria local
-      const payload: CrearCitaPayload = {
+      const payload = {
         paciente_id: pacienteId,
         profesional_id: profesionalId,
         inicio: `${fecha}T${horaInicio}:00.000-05:00`,
@@ -282,20 +333,42 @@ export function CitaModal({
         notas: notas || undefined
       }
       
-      console.log('📝 Creando cita con payload:', payload)
+      let citaCreada
 
-      const resultCita = await crearCita(payload)
+      // Si estamos editando, actualizar la cita
+      if (citaToEdit) {
+        console.log('📝 Actualizando cita:', citaToEdit.id, payload)
+        
+        const response = await fetch(`http://localhost:3001/api/citas/${citaToEdit.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
 
-      if (!resultCita.success || !resultCita.data) {
-        throw new Error(resultCita.error || "No se pudo crear la cita")
+        if (!response.ok) {
+          throw new Error('Error al actualizar la cita')
+        }
+
+        const result = await response.json()
+        citaCreada = result.data
+      } else {
+        // Si es nueva, crear la cita
+        console.log('📝 Creando nueva cita:', payload)
+        
+        const resultCita = await crearCita(payload)
+
+        if (!resultCita.success || !resultCita.data) {
+          throw new Error(resultCita.error || "No se pudo crear la cita")
+        }
+
+        citaCreada = resultCita.data
       }
 
-      const citaCreada = resultCita.data
       let sesionAsignada = false
       let mensajeExtra = ""
 
-      // 2. Si hay un plan seleccionado, asignar la cita a una sesión
-      if (planId) {
+      // 2. Si hay un plan seleccionado, asignar la cita a una sesión (solo para nuevas citas)
+      if (planId && !citaToEdit) {
         let sesionParaAsignar = sesionId
         console.log('Plan seleccionado:', planId)
         console.log('Sesión pendiente disponible:', sesionParaAsignar)
@@ -329,8 +402,8 @@ export function CitaModal({
         }
       }
 
-      // 3. Programar notificación si está activada
-      if (enviarNotificacion) {
+      // 3. Programar notificación si está activada (solo para nuevas citas)
+      if (enviarNotificacion && !citaToEdit) {
         console.log('📱 Programando notificación para cita:', citaCreada.id)
         const resultNotificacion = await programarNotificacionCita(citaCreada.id)
         if (resultNotificacion.success) {
@@ -342,10 +415,12 @@ export function CitaModal({
       }
 
       toast({
-        title: "✅ Cita creada" + mensajeExtra,
-        description: planId && sesionAsignada
-          ? `La cita se ha vinculado al plan de tratamiento`
-          : "La cita se ha creado exitosamente"
+        title: citaToEdit ? "✅ Cita actualizada" : "✅ Cita creada" + mensajeExtra,
+        description: citaToEdit 
+          ? "La cita se ha actualizado exitosamente"
+          : planId && sesionAsignada
+            ? `La cita se ha vinculado al plan de tratamiento`
+            : "La cita se ha creado exitosamente"
       })
       
       onSuccess?.()
@@ -354,7 +429,7 @@ export function CitaModal({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear la cita",
+        description: error.message || (citaToEdit ? "No se pudo actualizar la cita" : "No se pudo crear la cita"),
         variant: "destructive"
       })
     }
@@ -394,8 +469,8 @@ export function CitaModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Calendar className="h-5 w-5 text-[#056CF2]" />
-            Nueva Cita
+            <Calendar className="h-5 w-5 text-cyan-600" />
+            {citaToEdit ? "Editar Cita" : "Nueva Cita"}
           </DialogTitle>
         </DialogHeader>
 
@@ -409,22 +484,97 @@ export function CitaModal({
                 Cargando pacientes...
               </div>
             ) : (
-              <Select 
-                value={pacienteId} 
-                onValueChange={setPacienteId}
-                disabled={!!pacienteIdProp}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un paciente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pacientes.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.nombres} {p.apellidos} {p.documento ? `(${p.documento})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                {/* Barra de búsqueda */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Buscar por nombre, apellido o documento..."
+                    value={searchPaciente}
+                    onChange={(e) => setSearchPaciente(e.target.value)}
+                    className="pl-10"
+                    disabled={!!pacienteIdProp}
+                  />
+                </div>
+                
+                {/* Select de pacientes filtrados */}
+                <Select 
+                  value={pacienteId} 
+                  onValueChange={setPacienteId}
+                  disabled={!!pacienteIdProp}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un paciente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pacientes
+                      .filter(p => {
+                        if (!searchPaciente) return true;
+                        const search = searchPaciente.toLowerCase();
+                        return (
+                          p.nombres?.toLowerCase().includes(search) ||
+                          p.apellidos?.toLowerCase().includes(search) ||
+                          p.documento?.toLowerCase().includes(search) ||
+                          p.telefono?.toLowerCase().includes(search)
+                        );
+                      })
+                      .map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{p.nombres} {p.apellidos}</span>
+                            <span className="text-xs text-gray-500">
+                              {p.documento && `Doc: ${p.documento}`}
+                              {p.telefono && ` • Tel: ${p.telefono}`}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    {pacientes.filter(p => {
+                      if (!searchPaciente) return true;
+                      const search = searchPaciente.toLowerCase();
+                      return (
+                        p.nombres?.toLowerCase().includes(search) ||
+                        p.apellidos?.toLowerCase().includes(search) ||
+                        p.documento?.toLowerCase().includes(search) ||
+                        p.telefono?.toLowerCase().includes(search)
+                      );
+                    }).length === 0 && (
+                      <div className="p-4 text-center text-sm text-gray-500">
+                        No se encontraron pacientes
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                
+                {/* Paciente seleccionado */}
+                {pacienteId && (
+                  <div className="bg-cyan-50 border border-cyan-200 rounded p-3">
+                    <div className="flex items-start gap-2">
+                      <User className="h-4 w-4 text-cyan-600 mt-0.5" />
+                      <div className="flex-1">
+                        {(() => {
+                          const pacienteSeleccionado = pacientes.find(p => p.id === pacienteId);
+                          return pacienteSeleccionado ? (
+                            <>
+                              <p className="text-sm font-medium text-gray-900">
+                                {pacienteSeleccionado.nombres} {pacienteSeleccionado.apellidos}
+                              </p>
+                              <div className="flex gap-3 mt-1 text-xs text-gray-600">
+                                {pacienteSeleccionado.documento && (
+                                  <span>📄 {pacienteSeleccionado.documento}</span>
+                                )}
+                                {pacienteSeleccionado.telefono && (
+                                  <span>📱 {pacienteSeleccionado.telefono}</span>
+                                )}
+                              </div>
+                            </>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -460,7 +610,7 @@ export function CitaModal({
           {pacienteId && (
             <div className="space-y-2">
               <Label htmlFor="plan" className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-[#D466F2]" />
+                <Target className="h-4 w-4 text-cyan-600" />
                 Plan de Tratamiento
               </Label>
               {loadingPlanes ? (
@@ -495,8 +645,8 @@ export function CitaModal({
                   
                   {/* Info de sesiones pendientes */}
                   {planId && (
-                    <div className="bg-[#F5E6FF] border border-[#D466F2]/30 rounded-lg p-3 space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-[#9333EA]">
+                    <div className="bg-cyan-50 border border-cyan-600/30 rounded p-3 space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-cyan-700">
                         <CheckCircle2 className="h-4 w-4" />
                         <span className="font-medium">
                           {sesionesFiltradas.length > 0 
@@ -565,11 +715,11 @@ export function CitaModal({
           </div>
 
           {/* Verificar disponibilidad */}
-          <div className="bg-[#EBF5FF] border border-[#4BA4F2] rounded-lg p-4">
+          <div className="bg-cyan-50 border border-cyan-500 rounded p-4">
             <Button
               onClick={verificarDisponibilidad}
               disabled={validating || !profesionalId || !fecha || !horaInicio}
-              className="w-full bg-[#056CF2] hover:bg-[#0558C9]"
+              className="w-full bg-cyan-600 hover:bg-cyan-700"
             >
               {validating ? (
                 <>
@@ -582,14 +732,14 @@ export function CitaModal({
             </Button>
             
             {disponibilidadVerificada && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-[#0AA640]">
+              <div className="mt-3 flex items-center gap-2 text-sm text-emerald-600">
                 <CheckCircle2 className="h-4 w-4" />
                 Horario disponible
               </div>
             )}
 
             {conflictos.length > 0 && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium text-red-700">
                   <AlertCircle className="h-4 w-4" />
                   Conflicto de horario detectado
@@ -645,7 +795,7 @@ export function CitaModal({
           </div>
 
           {/* Notificación SMS */}
-          <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start space-x-3 p-4 bg-cyan-50 border border-cyan-200 rounded">
             <Checkbox
               id="notificacion"
               checked={enviarNotificacion}
@@ -656,7 +806,7 @@ export function CitaModal({
                 htmlFor="notificacion"
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
               >
-                <Bell className="h-4 w-4 text-blue-600" />
+                <Bell className="h-4 w-4 text-cyan-600" />
                 Enviar notificación SMS
               </label>
               <p className="text-xs text-gray-600 mt-1">
@@ -673,17 +823,17 @@ export function CitaModal({
           <Button
             onClick={handleSubmit}
             disabled={loading || !disponibilidadVerificada}
-            className="bg-[#0AA640] hover:bg-[#098A36]"
+            className="bg-emerald-600 hover:bg-emerald-700"
           >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creando...
+                {citaToEdit ? "Actualizando..." : "Creando..."}
               </>
             ) : (
               <>
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                {planId ? "Crear Cita y Sesión" : "Crear Cita"}
+                {citaToEdit ? "Actualizar Cita" : (planId ? "Crear Cita y Sesión" : "Crear Cita")}
               </>
             )}
           </Button>

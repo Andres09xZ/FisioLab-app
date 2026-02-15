@@ -1,5 +1,14 @@
 import { Router } from 'express';
-import { resumen, ingresosMes, getAnalyticsDashboard, getTendencias } from '../controllers/dashboard.controller.js';
+import { 
+  resumen, 
+  ingresosMes, 
+  getAnalyticsDashboard, 
+  getTendencias,
+  getEvaluacionesPorEspecialidad,
+  getPlanesPorEspecialidad,
+  getResumenEspecialidades,
+  getDetalleEspecialidad
+} from '../controllers/dashboard.controller.js';
 
 const router = Router();
 
@@ -137,5 +146,93 @@ router.get('/analytics/dashboard', getAnalyticsDashboard);
  *                         type: integer
  */
 router.get('/analytics/tendencias', getTendencias);
+
+/**
+ * @swagger
+ * /api/dashboard/especialidades/evaluaciones:
+ *   get:
+ *     summary: Estadísticas de evaluaciones por especialidad
+ *     tags: [Dashboard]
+ *     parameters:
+ *       - in: query
+ *         name: fecha_inicio
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha de inicio del período (opcional)
+ *       - in: query
+ *         name: fecha_fin
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha de fin del período (opcional)
+ *     responses:
+ *       200:
+ *         description: Evaluaciones agrupadas por especialidad con pacientes
+ */
+router.get('/dashboard/especialidades/evaluaciones', getEvaluacionesPorEspecialidad);
+
+/**
+ * @swagger
+ * /api/dashboard/especialidades/planes:
+ *   get:
+ *     summary: Estadísticas de planes por especialidad
+ *     tags: [Dashboard]
+ *     parameters:
+ *       - in: query
+ *         name: fecha_inicio
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha de inicio del período (opcional)
+ *       - in: query
+ *         name: fecha_fin
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha de fin del período (opcional)
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *           enum: [activo, finalizado, cancelado]
+ *         description: Filtrar por estado de plan (opcional)
+ *     responses:
+ *       200:
+ *         description: Planes agrupados por especialidad con pacientes
+ */
+router.get('/dashboard/especialidades/planes', getPlanesPorEspecialidad);
+
+/**
+ * @swagger
+ * /api/dashboard/especialidades/resumen:
+ *   get:
+ *     summary: Resumen general de todas las especialidades
+ *     tags: [Dashboard]
+ *     responses:
+ *       200:
+ *         description: Resumen consolidado de evaluaciones y planes por especialidad
+ */
+router.get('/dashboard/especialidades/resumen', getResumenEspecialidades);
+
+/**
+ * @swagger
+ * /api/dashboard/especialidades/{especialidad}/detalle:
+ *   get:
+ *     summary: Detalle completo de una especialidad específica
+ *     tags: [Dashboard]
+ *     parameters:
+ *       - in: path
+ *         name: especialidad
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [Traumatologia, Neurologia, Deportologia, Pediatria, Geriatria, Sin especialidad]
+ *         description: Nombre de la especialidad
+ *     responses:
+ *       200:
+ *         description: Detalle completo con evaluaciones, planes y pacientes
+ */
+router.get('/dashboard/especialidades/:especialidad/detalle', getDetalleEspecialidad);
 
 export default router;

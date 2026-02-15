@@ -35,14 +35,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-emerald-600 mb-2">FisioLab ST</h1>
           <p className="text-gray-600">Sistema de Gestión Profesional</p>
         </div>
 
-        <Card className="border-emerald-100 shadow-xl">
+        <Card className="border-emerald-100">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">Iniciar Sesión</CardTitle>
             <CardDescription className="text-center">Ingresa tus credenciales para acceder</CardDescription>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { listPacientes, createPaciente, getPaciente, updatePaciente, deletePaciente } from '../controllers/pacientes.controller.js';
 import { listEvaluacionesByPaciente } from '../controllers/evaluaciones.controller.js';
 import { getSesionesPendientesPaciente } from '../controllers/sesiones.controller.js';
+import { authenticateToken } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 

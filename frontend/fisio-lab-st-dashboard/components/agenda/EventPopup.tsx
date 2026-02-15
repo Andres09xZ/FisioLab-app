@@ -52,14 +52,14 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
   const getEstadoColor = (estado: string) => {
     switch (estado.toLowerCase()) {
       case "confirmada":
-        return "bg-[#E6FFF5] text-[#0AA640] border-[#0AA640]/30"
+        return "bg-emerald-50 text-emerald-600 border-emerald-600/30"
       case "pendiente":
       case "programada":
         return "bg-yellow-100 text-yellow-700 border-yellow-200"
       case "cancelada":
         return "bg-red-100 text-red-700 border-red-200"
       case "completada":
-        return "bg-[#EBF5FF] text-[#056CF2] border-[#4BA4F2]/30"
+        return "bg-cyan-50 text-cyan-600 border-cyan-500/30"
       default:
         return "bg-gray-100 text-gray-700 border-gray-200"
     }
@@ -179,7 +179,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Calendar className="h-5 w-5 text-[#056CF2]" />
+            <Calendar className="h-5 w-5 text-cyan-600" />
             Detalles de la Cita
           </DialogTitle>
         </DialogHeader>
@@ -199,8 +199,8 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
 
           {/* Información del Paciente */}
           {(evento.paciente_nombre || evento.paciente_telefono || evento.paciente_email) && (
-            <div className="bg-[#EBF5FF] border border-[#4BA4F2]/30 rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2 text-[#056CF2] font-medium mb-2">
+            <div className="bg-cyan-50 border border-cyan-500/30 rounded p-4 space-y-3">
+              <div className="flex items-center gap-2 text-cyan-600 font-medium mb-2">
                 <User className="h-5 w-5" />
                 <span>Información del Paciente</span>
               </div>
@@ -222,7 +222,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
                     <div className="text-xs text-gray-500">Teléfono</div>
                     <a 
                       href={`tel:${evento.paciente_telefono}`} 
-                      className="font-medium text-[#056CF2] hover:underline"
+                      className="font-medium text-cyan-600 hover:underline"
                     >
                       {evento.paciente_telefono}
                     </a>
@@ -237,7 +237,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
                     <div className="text-xs text-gray-500">Email</div>
                     <a 
                       href={`mailto:${evento.paciente_email}`} 
-                      className="font-medium text-[#056CF2] hover:underline break-all"
+                      className="font-medium text-cyan-600 hover:underline break-all"
                     >
                       {evento.paciente_email}
                     </a>
@@ -249,7 +249,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
 
           {/* Información del Profesional y Recurso */}
           {(evento.profesional_nombre || evento.recurso_nombre) && (
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+            <div className="bg-gray-50 rounded p-4 space-y-3">
               {evento.profesional_nombre && (
                 <div className="flex items-start gap-2">
                   <Briefcase className="h-4 w-4 text-gray-500 mt-0.5" />
@@ -274,7 +274,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
 
           {/* Horario - Editable */}
           {mostrarEditarHora ? (
-            <div className="bg-[#EBF5FF] border border-[#4BA4F2] rounded-lg p-4 space-y-3">
+            <div className="bg-cyan-50 border border-cyan-500 rounded p-4 space-y-3">
               <Label className="font-medium">Editar horario:</Label>
               <div className="space-y-2">
                 <div>
@@ -308,7 +308,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
                 <Button
                   onClick={handleGuardarHora}
                   disabled={loading}
-                  className="flex-1 bg-[#056CF2] hover:bg-[#0558C9]"
+                  className="flex-1 bg-cyan-600 hover:bg-cyan-700"
                 >
                   {loading ? "Guardando..." : "Guardar Cambios"}
                 </Button>
@@ -322,7 +322,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
               </div>
             </div>
           ) : (
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+            <div className="bg-gray-50 rounded p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-gray-500" />
@@ -336,7 +336,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
                       resetVistas()
                       setMostrarEditarHora(true)
                     }}
-                    className="text-[#056CF2] hover:text-[#0558C9]"
+                    className="text-cyan-600 hover:text-cyan-700"
                   >
                     <Edit className="h-4 w-4 mr-1" />
                     Editar
@@ -364,7 +364,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
 
           {/* Formulario para completar */}
           {mostrarFormCompletar && puedeCompletar && (
-            <div className="space-y-2 bg-[#E6FFF5] border border-[#0AA640]/30 rounded-lg p-4">
+            <div className="space-y-2 bg-emerald-50 border border-emerald-600/30 rounded p-4">
               <Label htmlFor="notasCompletar">Notas de finalización:</Label>
               <Textarea
                 id="notasCompletar"
@@ -377,7 +377,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
                 <Button
                   onClick={handleCompletar}
                   disabled={loading}
-                  className="flex-1 bg-[#0AA640] hover:bg-[#098A36]"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   {loading ? "Completando..." : "Confirmar"}
@@ -395,7 +395,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
 
           {/* Confirmación de cancelación */}
           {mostrarConfirmCancelar && puedeCancelar && (
-            <div className="space-y-2 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="space-y-2 bg-yellow-50 border border-yellow-200 rounded p-4">
               <div className="flex items-center gap-2 text-yellow-700 font-medium mb-2">
                 <AlertTriangle className="h-5 w-5" />
                 ¿Cancelar esta cita?
@@ -430,7 +430,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
 
           {/* Confirmación de eliminación */}
           {mostrarConfirmEliminar && (
-            <div className="space-y-2 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="space-y-2 bg-red-50 border border-red-200 rounded p-4">
               <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
                 <Trash2 className="h-5 w-5" />
                 ¿Eliminar esta cita permanentemente?
@@ -474,7 +474,7 @@ export function EventPopup({ open, onClose, onSuccess, evento }: EventPopupProps
                     resetVistas()
                     setMostrarFormCompletar(true)
                   }}
-                  className="bg-[#0AA640] hover:bg-[#098A36]"
+                  className="bg-emerald-600 hover:bg-emerald-700"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Completar

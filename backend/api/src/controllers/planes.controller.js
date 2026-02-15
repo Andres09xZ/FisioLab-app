@@ -11,6 +11,7 @@ export const listPlanesPorPaciente = async (req, res) => {
     let sql = `SELECT pt.id,
                       pt.paciente_id,
                       pt.evaluacion_id,
+                      pt.especialidad,
                       pt.objetivo,
                       pt.sesiones_plan,
                       pt.sesiones_completadas,
@@ -37,7 +38,8 @@ export const listPlanesPorPaciente = async (req, res) => {
                         SELECT json_build_object(
                           'id', ef.id,
                           'diagnostico', ef.diagnostico,
-                          'fecha_evaluacion', ef.fecha_evaluacion
+                          'fecha_evaluacion', ef.fecha_evaluacion,
+                          'especialidad', ef.especialidad
                         )
                         FROM evaluaciones_fisioterapeuticas ef WHERE ef.id = pt.evaluacion_id
                       ) as evaluacion
@@ -64,15 +66,25 @@ export const listPlanesPorPaciente = async (req, res) => {
 export const createPlan = async (req, res) => {
   try {
     const { id } = req.params; // paciente id
-    const { objetivo, sesiones_plan, notas, evaluacion_id } = req.body;
+    const { objetivo, sesiones_plan, notas, evaluacion_id, especialidad } = req.body;
     if (!objetivo || !sesiones_plan) {
       return res.status(400).json({ success: false, message: 'objetivo y sesiones_plan son requeridos' });
     }
+    
+    // Validar especialidad si se proporciona
+    const especialidadesValidas = ['Traumatologia', 'Neurologia', 'Deportologia', 'Pediatria', 'Geriatria'];
+    if (especialidad && !especialidadesValidas.includes(especialidad)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `especialidad debe ser una de: ${especialidadesValidas.join(', ')}` 
+      });
+    }
+    
     const { rows } = await query(
-      `INSERT INTO planes_tratamiento (paciente_id, evaluacion_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo)
-       VALUES ($1, $2, $3, $4, 0, 'activo', $5, true)
-       RETURNING id, paciente_id, evaluacion_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en`,
-      [id, evaluacion_id || null, objetivo, sesiones_plan, notas || null]
+      `INSERT INTO planes_tratamiento (paciente_id, evaluacion_id, especialidad, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo)
+       VALUES ($1, $2, $3::especialidad_fisioterapia, $4, $5, 0, 'activo', $6, true)
+       RETURNING id, paciente_id, evaluacion_id, especialidad, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en`,
+      [id, evaluacion_id || null, especialidad || null, objetivo, sesiones_plan, notas || null]
     );
     return res.status(201).json({ success: true, data: rows[0] });
   } catch (err) {
@@ -84,7 +96,7 @@ export const createPlan = async (req, res) => {
 export const updatePlan = async (req, res) => {
   try {
     const { id } = req.params; // plan id
-    const { objetivo, sesiones_plan, notas, activo, estado, evaluacion_id } = req.body;
+    const { objetivo, sesiones_plan, notas, activo, estado, evaluacion_id, especialidad } = req.body;
     
     // Validar estado si se proporciona
     const estadosValidos = ['activo', 'finalizado', 'cancelado'];
@@ -92,6 +104,15 @@ export const updatePlan = async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         message: `Estado inválido. Valores permitidos: ${estadosValidos.join(', ')}` 
+      });
+    }
+    
+    // Validar especialidad si se proporciona
+    const especialidadesValidas = ['Traumatologia', 'Neurologia', 'Deportologia', 'Pediatria', 'Geriatria'];
+    if (especialidad && !especialidadesValidas.includes(especialidad)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `especialidad debe ser una de: ${especialidadesValidas.join(', ')}` 
       });
     }
     
@@ -103,10 +124,11 @@ export const updatePlan = async (req, res) => {
         activo = COALESCE($5, activo),
         estado = COALESCE($6, estado),
         evaluacion_id = COALESCE($7, evaluacion_id),
+        especialidad = COALESCE($8::especialidad_fisioterapia, especialidad),
         actualizado_en = NOW()
       WHERE id = $1
-      RETURNING id, paciente_id, evaluacion_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en, actualizado_en`,
-      [id, objetivo || null, sesiones_plan || null, notas || null, typeof activo === 'boolean' ? activo : null, estado || null, evaluacion_id || null]
+      RETURNING id, paciente_id, evaluacion_id, especialidad, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en, actualizado_en`,
+      [id, objetivo || null, sesiones_plan || null, notas || null, typeof activo === 'boolean' ? activo : null, estado || null, evaluacion_id || null, especialidad || null]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: 'Plan no encontrado' });
     return res.json({ success: true, data: rows[0] });
@@ -156,25 +178,37 @@ export const getPlan = async (req, res) => {
 
 export const createPlanForEvaluation = async (req, res) => {
   const {id: evaluacion_id} = req.params;
-  const {objetivo, sesiones_plan, notas} = req.body;
+  const {objetivo, sesiones_plan, notas, especialidad} = req.body;
 
   try {
+    // Validar especialidad si se proporciona
+    const especialidadesValidas = ['Traumatologia', 'Neurologia', 'Deportologia', 'Pediatria', 'Geriatria'];
+    if (especialidad && !especialidadesValidas.includes(especialidad)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `especialidad debe ser una de: ${especialidadesValidas.join(', ')}` 
+      });
+    }
+    
     const evaluacion = await query(
-      `SELECT paciente_id FROM evaluaciones_fisioterapeuticas WHERE id = $1`,
+      `SELECT paciente_id, especialidad FROM evaluaciones_fisioterapeuticas WHERE id = $1`,
       [evaluacion_id]
     );
 
     if(evaluacion.rows.length === 0){
       return res.status(404).json({error: 'Evaluacion no encontrada'});
     }
-    const {paciente_id} = evaluacion.rows[0]; 
+    const {paciente_id, especialidad: evaluacion_especialidad} = evaluacion.rows[0]; 
+
+    // Usar especialidad del body o heredar de la evaluación
+    const especialidadFinal = especialidad || evaluacion_especialidad;
 
     // Creamos el plan de tratamiento con estado inicial 'activo'
     const result = await query(
-      `INSERT INTO planes_tratamiento (paciente_id, evaluacion_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo)
-       VALUES ($1, $2, $3, $4, 0, 'activo', $5, true)
-       RETURNING id, paciente_id, evaluacion_id, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en`,
-      [paciente_id, evaluacion_id, objetivo, sesiones_plan, notas || null]
+      `INSERT INTO planes_tratamiento (paciente_id, evaluacion_id, especialidad, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo)
+       VALUES ($1, $2, $3::especialidad_fisioterapia, $4, $5, 0, 'activo', $6, true)
+       RETURNING id, paciente_id, evaluacion_id, especialidad, objetivo, sesiones_plan, sesiones_completadas, estado, notas, activo, creado_en`,
+      [paciente_id, evaluacion_id, especialidadFinal || null, objetivo, sesiones_plan, notas || null]
     );
     return res.status(201).json({ success: true, data: result.rows[0] });
   }catch(error){

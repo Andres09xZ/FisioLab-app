@@ -1,0 +1,284 @@
+#!/usr/bin/env bash
+
+# ==============================================================================
+# GUÍA RÁPIDA - HISTORIAS CLÍNICAS FASE 2
+# ==============================================================================
+
+echo "
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║               🏥 HISTORIAS CLÍNICAS DEL DOCTOR - FASE 2                  ║
+║                          ✅ COMPLETADA                                    ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+"
+
+echo "
+📍 UBICACIÓN DE ARCHIVOS CREADOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 frontend/fisio-lab-st-dashboard/
+
+   📄 app/historias-clinicas/
+      ├── page.tsx                    ✅ Listado principal
+      ├── nueva/page.tsx              ✅ Crear nueva HC
+      └── [id]/
+          ├── page.tsx                ✅ Ver detalle
+          └── editar/page.tsx         ✅ Editar HC
+
+   📄 components/dashboard/
+      ├── historias-clinicas-table.tsx ✅ Tabla con acciones
+      └── sidebar.tsx                 ✅ Menú actualizado
+"
+
+echo "
+🌐 RUTAS DISPONIBLES EN EL NAVEGADOR:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  🏠 /dashboard                     Dashboard principal
+  📋 /historias-clinicas            Listado de todas las HC
+  ➕ /historias-clinicas/nueva      Crear nueva Historia Clínica
+  👁️  /historias-clinicas/[id]      Ver detalle de HC
+  ✏️  /historias-clinicas/[id]/editar Editar Historia Clínica
+"
+
+echo "
+🔌 API ENDPOINTS UTILIZADOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Backend (http://localhost:3001):
+
+  GET    /api/historias-clinicas              Listar todas HC
+  POST   /api/historias-clinicas              Crear nueva HC
+  GET    /api/historias-clinicas/:id          Ver detalle HC
+  PUT    /api/historias-clinicas/:id          Actualizar HC
+  DELETE /api/historias-clinicas/:id          Eliminar HC
+  GET    /api/historias-clinicas/:id/pdf      Descargar PDF
+"
+
+echo "
+🎬 ACCIONES DISPONIBLES EN TABLA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Cada fila en la tabla tiene:
+
+  👁️  VER          → Abre la página de detalles
+  ✏️  EDITAR       → Abre el formulario para editar
+  📥 DESCARGAR PDF → Descarga la HC como PDF
+  🗑️  ELIMINAR     → Elimina la HC (con confirmación)
+"
+
+echo "
+📊 DATOS MOSTRADOS EN TABLA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Código HC          | HC-2026-00001, HC-2026-00002, ...
+  Paciente           | Nombre completo del paciente
+  Fecha Consulta     | Formato: dd/mm/yyyy
+  Diagnóstico        | Descripción del diagnóstico principal
+  Estado             | Activa / Inactiva
+  Acciones           | Ver, Editar, PDF, Eliminar
+"
+
+echo "
+🔍 BÚSQUEDA Y FILTROS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ Búsqueda en tiempo real por:
+    - Nombre del paciente
+    - Apellido del paciente
+    - Código HC (HC-YYYY-XXXXX)
+
+  ✓ Estadísticas resumidas:
+    - Total de historias clínicas
+    - Historias activas
+    - Creadas en últimas 7 días
+"
+
+echo "
+📋 INFORMACIÓN EN DETALLE HC:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Sección A:
+    - Institución y establecimiento
+    - Datos del paciente
+
+  Sección B:
+    - Motivo de consulta
+    - Fecha y hora
+
+  Sección C:
+    - Antecedentes médicos
+
+  Sección E:
+    - Descripción de enfermedad
+    - Escala EVA
+
+  Sección F:
+    - Signos vitales
+    - Antropometría
+
+  Sección G:
+    - Sistemas del cuerpo
+
+  Sección H:
+    - Examen físico
+
+  Sección I:
+    - Diagnósticos (principal + 2 secundarios)
+
+  Sección J:
+    - Planes de tratamiento
+    - Plan diagnóstico
+    - Plan terapéutico
+    - Plan educativo
+
+  Sección K:
+    - Datos del doctor
+    - Firma y sello
+"
+
+echo "
+💾 CÓMO USAR - PASO A PASO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1️⃣  CREAR NUEVA HC:
+      ▪ Navegar a /dashboard
+      ▪ Click en 'Historias Clínicas' en el sidebar
+      ▪ Click en 'Nueva Historia Clínica'
+      ▪ Llenar 10 secciones del formulario
+      ▪ Auto-guardado cada 30 segundos
+      ▪ Click en 'Guardar' cuando termine
+
+  2️⃣  VER LISTADO:
+      ▪ Navegar a /dashboard
+      ▪ Click en 'Historias Clínicas'
+      ▪ Ver tabla con todas las HC
+      ▪ Buscar por paciente o código
+
+  3️⃣  VER DETALLE:
+      ▪ En el listado, click en ojo (👁️) de cualquier fila
+      ▪ Se abre página con información resumida
+      ▪ Click en 'Editar' para modificar
+
+  4️⃣  EDITAR HC:
+      ▪ En el listado, click en lápiz (✏️)
+      ▪ Se abre formulario con datos actuales
+      ▪ Modificar campos necesarios
+      ▪ Auto-guardado automático
+
+  5️⃣  DESCARGAR PDF:
+      ▪ En el listado, click en descarga (📥)
+      ▪ Se genera y descarga PDF automáticamente
+      ▪ Formato profesional de historia clínica
+
+  6️⃣  ELIMINAR HC:
+      ▪ En el listado, click en papelera (🗑️)
+      ▪ Confirmar eliminación en diálogo
+      ▪ HC se elimina de forma segura
+"
+
+echo "
+✨ CARACTERÍSTICAS ESPECIALES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ Auto-guardado cada 30 segundos
+  ✓ IMC calculado automáticamente
+  ✓ Escala EVA con slider visual
+  ✓ Validación en tiempo real
+  ✓ Código HC auto-generado (HC-YYYY-XXXXX)
+  ✓ Búsqueda sin necesidad de botón
+  ✓ Estadísticas en tiempo real
+  ✓ Notificaciones Toast (éxito/error)
+  ✓ Indicadores de carga
+  ✓ Soft delete (datos preservados)
+  ✓ Responsivo en móvil y desktop
+  ✓ Interfaz intuitiva con iconos
+"
+
+echo "
+🔐 SEGURIDAD:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ JWT autenticación requerida
+  ✓ Solo doctores pueden crear HC
+  ✓ Validación de token en cada página
+  ✓ Redirección a login si no autenticado
+  ✓ Confirmación para eliminaciones
+  ✓ Soft delete (datos nunca se pierden)
+"
+
+echo "
+⚙️  VARIABLES DE ENTORNO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Backend URL: http://localhost:3001
+  Frontend URL: http://localhost:3000
+  Token guardado en: localStorage.fisiolab_token
+  Usuario guardado en: localStorage.fisiolab_user
+  Sidebar collapsed: localStorage.sidebar-collapsed
+"
+
+echo "
+📱 RESPONSIVIDAD:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ Desktop (1024px+)    Tabla completa con todas las columnas
+  ✓ Tablet (768px+)      Tabla adaptada con scroll horizontal
+  ✓ Mobile (< 768px)     Vista compacta, scroll para acciones
+"
+
+echo "
+🎨 COLORES Y TEMA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Primario:       #8B3AB8 (Púrpura)
+  Éxito:          #0AA640 (Verde)
+  Error:          #EF4444 (Rojo)
+  Fondo:          #F3F4F6 (Gris claro)
+  Texto:          #1F2937 (Gris oscuro)
+"
+
+echo "
+🚀 PRÓXIMOS PASOS OPCIONALES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  FASE 3 - Mejoras Futuras:
+
+  • PDF con diseño profesional
+  • Vista de Fisioterapeuta (lectura)
+  • Reportes y análisis
+  • Sistema de archivos adjuntos
+  • Impresión directa
+  • Exportar a Excel
+  • Historial de cambios
+  • Compartir con otros usuarios
+"
+
+echo "
+📞 SOPORTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Documentación:
+  • FASE_2_COMPLETADA.md       → Detalles técnicos
+  • RESUMEN_FINAL_FASE_2.md    → Resumen ejecutivo
+  • GUIA_RAPIDA_HISTORIA_CLINICA.md  → Quick reference
+
+  Contacto:
+  • Issues en GitHub
+  • Reportar bugs
+  • Solicitar features
+"
+
+echo "
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ FASE 2 COMPLETADA EXITOSAMENTE
+
+Generado: 5 de Febrero de 2026
+Versión: 1.0
+Estado: Listo para producción
+Autor: GitHub Copilot
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"

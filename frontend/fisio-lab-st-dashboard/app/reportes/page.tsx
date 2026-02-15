@@ -114,7 +114,7 @@ export default function ReportesPage() {
           {/* Reportes Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Ocupación de Recursos */}
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="transition-shadow cursor-pointer">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="p-3 bg-blue-50 rounded-full">
@@ -138,7 +138,7 @@ export default function ReportesPage() {
             </Card>
 
             {/* Ocupación de Profesionales */}
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="transition-shadow cursor-pointer">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="p-3 bg-emerald-50 rounded-full">
@@ -162,7 +162,7 @@ export default function ReportesPage() {
             </Card>
 
             {/* Estadísticas Generales */}
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Card className="transition-shadow cursor-pointer">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="p-3 bg-purple-50 rounded-full">

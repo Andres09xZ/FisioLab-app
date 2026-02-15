@@ -22,7 +22,7 @@ export function PendingTasks() {
           {tasks.map((item, idx) => (
             <div
               key={idx}
-              className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"
+              className="flex items-start gap-3 p-3 rounded hover:bg-slate-50 transition-colors cursor-pointer group"
             >
               <input
                 type="checkbox"

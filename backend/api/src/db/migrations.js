@@ -180,6 +180,18 @@ export const runMigrations = async () => {
     // Add escala_eva column if the table already existed
     await query(`ALTER TABLE evaluaciones_fisioterapeuticas ADD COLUMN IF NOT EXISTS escala_eva INTEGER CHECK (escala_eva >= 0 AND escala_eva <= 10)`);
     
+    // Create especialidad_fisioterapia enum type
+    try {
+      await query(`DO $$ BEGIN
+        CREATE TYPE especialidad_fisioterapia AS ENUM ('Traumatologia','Neurologia','Deportologia','Pediatria','Geriatria');
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+    } catch (e) {
+      console.log('Enum especialidad_fisioterapia already exists or error:', e.message);
+    }
+    
+    // Add especialidad column to evaluaciones_fisioterapeuticas
+    await query(`ALTER TABLE evaluaciones_fisioterapeuticas ADD COLUMN IF NOT EXISTS especialidad especialidad_fisioterapia`);
+    
     // Remove profesion and tipo_trabajo from evaluaciones (now in pacientes)
     // These columns will be safely dropped if they exist
     if (await checkColumn('evaluaciones_fisioterapeuticas', 'profesion')) {
@@ -238,6 +250,8 @@ export const runMigrations = async () => {
       await query(`ALTER TABLE planes_tratamiento ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true`);
       await query(`ALTER TABLE planes_tratamiento ADD COLUMN IF NOT EXISTS creado_en TIMESTAMPTZ DEFAULT NOW()`);
       await query(`ALTER TABLE planes_tratamiento ADD COLUMN IF NOT EXISTS actualizado_en TIMESTAMPTZ DEFAULT NOW()`);
+      // Add especialidad column
+      await query(`ALTER TABLE planes_tratamiento ADD COLUMN IF NOT EXISTS especialidad especialidad_fisioterapia`);
     } catch (e) {
       console.log('Some columns already exist in planes_tratamiento:', e.message);
     }

@@ -103,7 +103,7 @@ export function ViewHistoriaClinicaModal({ open, onOpenChange, historiaData, pac
             {historia.otros && (
               <div>
                 <h3 className="font-semibold text-lg mb-2">Otros Antecedentes</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
+                <div className="bg-slate-50 rounded p-4 border border-slate-200">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{historia.otros}</p>
                 </div>
               </div>
@@ -113,7 +113,7 @@ export function ViewHistoriaClinicaModal({ open, onOpenChange, historiaData, pac
             {historia.notas && (
               <div>
                 <h3 className="font-semibold text-lg mb-2">Notas</h3>
-                <div className="bg-blue-50 rounded-lg p-4">
+                <div className="bg-cyan-50 rounded p-4 border border-cyan-200">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{historia.notas}</p>
                 </div>
               </div>
@@ -126,7 +126,7 @@ export function ViewHistoriaClinicaModal({ open, onOpenChange, historiaData, pac
                   <AlertCircle className="h-5 w-5 text-orange-600" />
                   Alergias
                 </h3>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="bg-orange-50 border border-orange-200 rounded p-4">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap font-medium">{historia.alergias}</p>
                 </div>
               </div>
@@ -136,7 +136,7 @@ export function ViewHistoriaClinicaModal({ open, onOpenChange, historiaData, pac
             {historia.diagnostico && (
               <div>
                 <h3 className="font-semibold text-lg mb-2">Diagnóstico</h3>
-                <div className="bg-emerald-50 rounded-lg p-4">
+                <div className="bg-emerald-50 rounded p-4 border border-emerald-200">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{historia.diagnostico}</p>
                 </div>
               </div>

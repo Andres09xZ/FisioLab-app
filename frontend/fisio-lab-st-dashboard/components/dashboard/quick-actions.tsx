@@ -1,44 +1,42 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, UserPlus, DollarSign, FileText, Zap } from "lucide-react"
-import { NewPatientModal } from "./new-patient-modal"
+import { Plus, UserPlus, ClipboardList, FileText, Zap } from "lucide-react"
 import { CitaModal } from "@/components/agenda/CitaModal"
 
 const actions = [
   { id: "nueva-cita", label: "Nueva Cita", icon: Plus, color: "#10B981" },
   { id: "nuevo-paciente", label: "Nuevo Paciente", icon: UserPlus, color: "#3B82F6" },
-  { id: "registrar-pago", label: "Registrar Pago", icon: DollarSign, color: "#8B5CF6" },
+  { id: "nuevo-plan", label: "Nuevo Plan de Tratamiento", icon: ClipboardList, color: "#8B5CF6" },
   { id: "generar-certificado", label: "Generar Certificado", icon: FileText, color: "#F59E0B" },
 ]
 
 export function QuickActions() {
-  const [showNewPatientModal, setShowNewPatientModal] = useState(false)
+  const router = useRouter()
   const [showNewCitaModal, setShowNewCitaModal] = useState(false)
 
   const handleAction = (actionId: string) => {
     switch (actionId) {
       case "nuevo-paciente":
-        setShowNewPatientModal(true)
+        router.push("/pacientes/nuevo")
         break
       case "nueva-cita":
         setShowNewCitaModal(true)
         break
-      case "registrar-pago":
-        // TODO: Implementar modal de registrar pago
-        console.log("Registrar pago")
+      case "nuevo-plan":
+        router.push("/planes/crear")
         break
       case "generar-certificado":
-        // TODO: Implementar modal de generar certificado
-        console.log("Generar certificado")
+        router.push("/certificados")
         break
     }
   }
 
   return (
     <>
-      <Card className="border-gray-200">
+      <Card className="border-gray-200 h-full">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Zap className="h-4 w-4 text-emerald-600" />
@@ -46,19 +44,19 @@ export function QuickActions() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {actions.map((action) => {
               const Icon = action.icon
               return (
                 <button
                   key={action.id}
                   onClick={() => handleAction(action.id)}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50 transition-all group w-full"
+                  className="flex items-center gap-3 p-3 rounded border border-slate-100 hover:border-cyan-200 hover:bg-cyan-50 transition-colors group w-full"
                 >
-                  <div className="p-2 rounded-lg shrink-0" style={{ backgroundColor: `${action.color}15` }}>
+                  <div className="p-2 rounded shrink-0" style={{ backgroundColor: `${action.color}15` }}>
                     <Icon className="h-4 w-4" style={{ color: action.color }} />
                   </div>
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-700 text-left">
+                  <span className="text-sm font-medium text-slate-700 group-hover:text-cyan-700 text-left">
                     {action.label}
                   </span>
                 </button>
@@ -68,7 +66,6 @@ export function QuickActions() {
         </CardContent>
       </Card>
 
-      <NewPatientModal open={showNewPatientModal} onOpenChange={setShowNewPatientModal} />
       <CitaModal 
         open={showNewCitaModal} 
         onClose={() => setShowNewCitaModal(false)}

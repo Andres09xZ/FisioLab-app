@@ -6,7 +6,7 @@ import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardTopbar } from "@/components/dashboard/topbar"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { QuickActions } from "@/components/dashboard/quick-actions"
-import { AgendaDelDia } from "@/components/dashboard/agenda-del-dia"
+import { SesionesDelDia } from "@/components/dashboard/sesiones-del-dia"
 import { TrendingUp, UserCheck, Activity, CalendarCheck } from "lucide-react"
 
 export default function DashboardPage() {
@@ -14,6 +14,18 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [dashboardData, setDashboardData] = useState<any>(null)
   const [ingresosData, setIngresosData] = useState<any[]>([])
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebar-collapsed')
+      return saved ? JSON.parse(saved) : false
+    }
+    return false
+  })
+
+  // Guardar estado del sidebar en localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(sidebarCollapsed))
+  }, [sidebarCollapsed])
 
   useEffect(() => {
     const userData = localStorage.getItem("fisiolab_user")
@@ -84,10 +96,16 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <DashboardSidebar />
+      <DashboardSidebar 
+        isCollapsed={sidebarCollapsed} 
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <DashboardTopbar user={user} />
+        <DashboardTopbar 
+          user={user} 
+          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
 
         <main className="flex-1 overflow-y-auto p-6">
           {/* Stats Cards */}
@@ -123,14 +141,14 @@ export default function DashboardPage() {
           </div>
 
           {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Agenda del Día */}
-            <div className="lg:col-span-2">
-              <AgendaDelDia />
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Today's Sessions (Priority View) */}
+            <div className="flex-1 min-w-0">
+              <SesionesDelDia />
             </div>
 
-            {/* Right Column - Quick Actions */}
-            <div className="lg:col-span-1">
+            {/* Quick Actions */}
+            <div className="w-full lg:w-[30%] lg:min-w-[380px] lg:max-w-[420px] shrink-0">
               <QuickActions />
             </div>
           </div>

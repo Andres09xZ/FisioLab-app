@@ -272,7 +272,7 @@ export default function BibliotecaPage() {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#056CF2]" />
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
       </div>
     )
   }
@@ -294,7 +294,7 @@ export default function BibliotecaPage() {
             </div>
             <Button
               onClick={() => setShowUploadModal(true)}
-              className="bg-[#056CF2] hover:bg-[#0455C2]"
+              className="bg-cyan-600 hover:bg-cyan-700"
             >
               <Upload className="h-4 w-4 mr-2" />
               Subir Libro
@@ -345,8 +345,8 @@ export default function BibliotecaPage() {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {filteredSavedBooks.map((book) => (
-                    <Card key={book.id} className="hover:shadow-lg transition-all group">
-                      <div className="aspect-2/3 relative bg-linear-to-br from-[#056CF2] to-[#0AA640] flex items-center justify-center">
+                    <Card key={book.id} className="transition-all group">
+                      <div className="aspect-2/3 relative bg-cyan-600 flex items-center justify-center">
                         {book.portada ? (
                           <img
                             src={book.portada}
@@ -428,7 +428,7 @@ export default function BibliotecaPage() {
                       <option value="fr">Francés</option>
                       <option value="de">Alemán</option>
                     </select>
-                    <Button onClick={() => searchGutendex()} className="bg-[#056CF2]">
+                    <Button onClick={() => searchGutendex()} className="bg-cyan-600 hover:bg-cyan-700">
                       <Search className="h-4 w-4 mr-2" />
                       Buscar
                     </Button>
@@ -441,7 +441,7 @@ export default function BibliotecaPage() {
                       <Badge
                         key={topic}
                         variant="outline"
-                        className="cursor-pointer hover:bg-[#EBF5FF]"
+                        className="cursor-pointer hover:bg-cyan-50"
                         onClick={() => {
                           setSearchTerm(topic)
                           searchGutendex()
@@ -457,7 +457,7 @@ export default function BibliotecaPage() {
               {/* Resultados */}
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#056CF2]" />
+                  <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
                 </div>
               ) : searchResults.length === 0 ? (
                 <Card>
@@ -470,7 +470,7 @@ export default function BibliotecaPage() {
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {searchResults.map(book => (
-                      <Card key={book.id} className="hover:shadow-lg transition-all group">
+                      <Card key={book.id} className="transition-all group">
                         <div className="aspect-2/3 relative bg-gray-100">
                           <img
                             src={book.formats["image/jpeg"] || "https://via.placeholder.com/200x300?text=Sin+Portada"}
@@ -491,7 +491,7 @@ export default function BibliotecaPage() {
                             </Badge>
                             <Button
                               size="sm"
-                              className="h-7 text-xs bg-[#0AA640] hover:bg-[#098A36]"
+                              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
                               onClick={() => saveExternalBook(book)}
                             >
                               <Save className="h-3 w-3 mr-1" />
@@ -542,7 +542,7 @@ export default function BibliotecaPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-[#056CF2]" />
+              <Upload className="h-5 w-5 text-cyan-600" />
               Subir Libro
             </DialogTitle>
             <DialogDescription>
@@ -614,7 +614,7 @@ export default function BibliotecaPage() {
             </Button>
             <Button
               onClick={handleUploadBook}
-              className="bg-[#056CF2] hover:bg-[#0455C2]"
+              className="bg-cyan-600 hover:bg-cyan-700"
             >
               <Upload className="h-4 w-4 mr-2" />
               Subir Libro
